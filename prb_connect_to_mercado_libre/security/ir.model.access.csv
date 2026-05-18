@@ -1,7 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_meli_account,meli.account,model_meli_account,base.group_system,1,1,1,1
-access_meli_order,meli.order,model_meli_order,base.group_user,1,1,1,1
-access_meli_product,meli.product,model_meli_product,base.group_user,1,1,1,1
-access_meli_category,meli.category,model_meli_category,base.group_user,1,1,1,1
-
-

@@ -115,6 +115,76 @@ class FalabellaApiService(models.AbstractModel):
 
         return response.text
 
+    def _extract_brands_from_response(self, response):
+        body = response.get("SuccessResponse", {}).get("Body", {})
+        brands_data = body.get("Brands", [])
+
+        brands = []
+
+        if isinstance(brands_data, list):
+            for item in brands_data:
+                if isinstance(item, dict) and item.get("Brand"):
+                    brands.append(item.get("Brand"))
+
+        elif isinstance(brands_data, dict):
+            brand_data = brands_data.get("Brand", [])
+            if isinstance(brand_data, list):
+                brands = brand_data
+            elif isinstance(brand_data, dict):
+                brands = [brand_data]
+
+        return brands
+
+    def sync_brands(self, account):
+        print("sync_brands")
+        response = self.get_brands(account)
+
+        raw_response = json.dumps(response, indent=4, ensure_ascii=False)
+
+
+        brands = self._extract_brands_from_response(response)
+
+
+        Brand = self.env["falabella.brand"].sudo()
+
+        created = 0
+        updated = 0
+
+        for item in brands:
+            brand_id = int(item.get("BrandId") or 0)
+            name = item.get("Name")
+            global_identifier = item.get("GlobalIdentifier")
+
+            if not brand_id or not name:
+                continue
+
+            vals = {
+                "account_id": account.id,
+                "brand_id": brand_id,
+                "name": name,
+                "global_identifier": global_identifier,
+                #"raw_xml": raw_response,
+            }
+            print("vals:", vals)
+            brand = Brand.search([
+                ("account_id", "=", account.id),
+                ("brand_id", "=", brand_id),
+            ], limit=1)
+
+            if brand:
+                brand.write(vals)
+                updated += 1
+            else:
+                print("vals",vals)
+                Brand.create(vals)
+                created += 1
+
+        return {
+            "created": created,
+            "updated": updated,
+            "total": len(brands),
+        }
+
     def get_brands(self, account):
         return self._call_api(
             account=account,

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
     <!-- APP PRINCIPAL -->
@@ -16,4 +17,9 @@
               parent="menu_falabella_config"
               action="action_falabella_account"
               sequence="10"/>
+    <menuitem id="menu_falabella_brands"
+          name="Marcas"
+          parent="menu_falabella_root"
+          action="action_falabella_brand"
+          sequence="20"/>
 </odoo>

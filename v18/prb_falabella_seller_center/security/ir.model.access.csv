@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_falabella_account,falabella.account,model_falabella_account,base.group_user,1,1,1,1
+access_falabella_brand,falabella.brand,model_falabella_brand,base.group_user,1,1,1,1

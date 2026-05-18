@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_falabella_brand_list" model="ir.ui.view">
+        <field name="name">falabella.brand.list</field>
+        <field name="model">falabella.brand</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="account_id"/>
+                <field name="brand_id"/>
+                <field name="name"/>
+                <field name="global_identifier"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_falabella_brand_form" model="ir.ui.view">
+        <field name="name">falabella.brand.form</field>
+        <field name="model">falabella.brand</field>
+        <field name="arch" type="xml">
+            <form string="Marca Falabella">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="account_id"/>
+                            <field name="brand_id"/>
+                            <field name="name"/>
+                            <field name="global_identifier"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Respuesta original">
+                            <field name="raw_xml" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_falabella_brand" model="ir.actions.act_window">
+        <field name="name">Marcas Falabella</field>
+        <field name="res_model">falabella.brand</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

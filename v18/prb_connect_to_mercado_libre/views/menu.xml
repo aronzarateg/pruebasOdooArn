@@ -2,7 +2,7 @@
 <odoo>
 
     <!-- APP PRINCIPAL -->
-    <menuitem id="menu_inspection_root"
+    <menuitem id="menu_meli_app_root"
               name="Api mercado libre"
               sequence="0"
               web_icon="prb_connect_to_mercado_libre,static/description/icon.png"/>
@@ -10,7 +10,7 @@
     <!-- MENÚ MERCADO LIBRE -->
     <menuitem id="menu_meli_root"
               name="Mercado Libre"
-              parent="menu_inspection_root"
+              parent="menu_meli_app_root"
               sequence="10"/>
 
 </odoo>

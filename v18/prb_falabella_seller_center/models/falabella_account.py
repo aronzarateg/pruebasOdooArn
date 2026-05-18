@@ -33,7 +33,7 @@ class FalabellaAccount(models.Model):
     def action_test_connection(self):
         for account in self:
             response = self.env["falabella.api.service"].get_brands(account)
-            account.last_response = str(response)
+
 
         return {
             "type": "ir.actions.client",
@@ -46,7 +46,36 @@ class FalabellaAccount(models.Model):
             },
         }
 
-    def action_get_brands(self):
+    def action_sync_brands(self):
+        total_created = 0
+        total_updated = 0
+        total = 0
+
         for account in self:
-            response = self.env["falabella.api.service"].get_brands(account)
-            account.last_response = str(response)
+            print("action_sync_brands")
+            result = self.env["falabella.api.service"].sync_brands(account)
+            print("result",result)
+
+            total_created += result.get("created", 0)
+            total_updated += result.get("updated", 0)
+            total += result.get("total", 0)
+
+            account.last_response = _(
+                "Sincronización de marcas finalizada.\n"
+                "Total API: %s\n"
+                "Creadas: %s\n"
+                "Actualizadas: %s"
+            ) % (result.get("total", 0), result.get("created", 0), result.get("updated", 0))
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Falabella"),
+                "message": _(
+                    "Marcas sincronizadas. Total: %s | Creadas: %s | Actualizadas: %s"
+                ) % (total, total_created, total_updated),
+                "type": "success",
+                "sticky": False,
+            },
+        }

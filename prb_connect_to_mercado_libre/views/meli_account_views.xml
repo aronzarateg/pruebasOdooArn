@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ACTION -->
+    <record id="action_meli_account" model="ir.actions.act_window">
+        <field name="name">Cuentas Mercado Libre</field>
+        <field name="res_model">meli.account</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- SUBMENU -->
+    <menuitem id="menu_meli_account"
+              name="Cuentas"
+              parent="prb_connect_to_mercado_libre.menu_meli_root"
+              action="action_meli_account"
+              sequence="10"/>
+
+    <!-- FORM -->
+    <record id="view_meli_account_form" model="ir.ui.view">
+        <field name="name">meli.account.form</field>
+        <field name="model">meli.account</field>
+        <field name="arch" type="xml">
+
+            <form string="Mercado Libre">
+                <header>
+
+                    <button name="action_connect_meli"
+                            string="Conectar Mercado Libre"
+                            type="object"
+                            class="btn-primary"/>
+
+                    <button name="action_test_connection"
+                            string="Probar conexión"
+                            type="object"
+                            class="btn-secondary"/>
+                    <button name="action_sync_orders"
+                            string="Sincronizar órdenes"
+                            type="object"
+                            class="btn-secondary"/>
+                    <button name="action_sync_items"
+                            string="Sincronizar publicaciones"
+                            type="object"
+                            class="btn-secondary"/>
+
+                </header>
+                <sheet>
+
+                    <group>
+                        <field name="name"/>
+                        <field name="client_id"/>
+                        <field name="client_secret" password="True"/>
+                        <field name="redirect_uri"/>
+                    </group>
+
+                    <group string="Tokens">
+                        <field name="meli_user_id" readonly="1"/>
+                        <field name="access_token" readonly="1" password="True"/>
+                        <field name="refresh_token" readonly="1" password="True"/>
+                        <field name="token_expires_in" readonly="1"/>
+                    </group>
+
+                    <footer>
+
+                        <button name="action_connect_meli"
+                                string="Conectar Mercado Libre"
+                                type="object"
+                                class="btn-primary"/>
+
+                        <button name="action_test_connection"
+                                string="Probar conexión"
+                                type="object"
+                                class="btn-secondary"/>
+
+                    </footer>
+
+                </sheet>
+
+            </form>
+
+        </field>
+    </record>
+
+    <!-- TREE -->
+    <record id="view_meli_account_list" model="ir.ui.view">
+        <field name="name">meli.account.list</field>
+        <field name="model">meli.account</field>
+        <field name="arch" type="xml">
+
+            <list>
+                <field name="name"/>
+                <field name="meli_user_id"/>
+                <field name="redirect_uri"/>
+            </list>
+
+        </field>
+    </record>
+
+</odoo>

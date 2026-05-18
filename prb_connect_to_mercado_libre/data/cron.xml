@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="ir_cron_meli_refresh_token" model="ir.cron">
+        <field name="name">Mercado Libre Refresh Token</field>
+        <field name="model_id" ref="model_meli_account"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_refresh_tokens()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="active">True</field>
+    </record>
+
+     <record id="ir_cron_meli_process_notifications" model="ir.cron">
+        <field name="name">Mercado Libre Procesar Notificaciones</field>
+        <field name="model_id" ref="model_meli_notification"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_process_notifications()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+
+
+</odoo>

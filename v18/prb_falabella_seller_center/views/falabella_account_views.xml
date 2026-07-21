@@ -61,11 +61,11 @@
                         </group>
                     </group>
 
-                    <notebook>
+                    <!--<notebook>
                         <page string="Última respuesta">
                             <field name="last_response" nolabel="1"/>
                         </page>
-                    </notebook>
+                    </notebook>-->
                 </sheet>
             </form>
         </field>

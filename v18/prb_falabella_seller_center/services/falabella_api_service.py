@@ -532,20 +532,4 @@ class FalabellaApiService(models.AbstractModel):
             payload=payload,
         )
 
-    def get_orders(self, account, extra_params=None):
-        return self._call_api(
-            account=account,
-            action="GetOrders",
-            method="GET",
-            extra_params=extra_params or {},
-        )
 
-    def get_order_items(self, account, order_id):
-        return self._call_api(
-            account=account,
-            action="GetOrderItems",
-            method="GET",
-            extra_params={
-                "OrderId": order_id,
-            },
-        )

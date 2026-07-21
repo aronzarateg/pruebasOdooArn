@@ -2,15 +2,15 @@
 <odoo>
 
     <record id="view_falabella_order_search" model="ir.ui.view">
-    <field name="name">falabella.order.search</field>
-    <field name="model">falabella.order</field>
-    <field name="arch" type="xml">
-        <search string="Buscar órdenes Falabella">
+        <field name="name">falabella.order.search</field>
+        <field name="model">falabella.order</field>
+        <field name="arch" type="xml">
+            <search string="Buscar órdenes Falabella">
 
-            <!-- Búsqueda principal -->
-            <field name="order_number"
-                   string="Orden"
-                   filter_domain="[
+                <!-- Búsqueda principal -->
+                <field name="order_number"
+                       string="Orden"
+                       filter_domain="[
                        '|','|','|',
                        ('order_number', 'ilike', self),
                        ('order_id', 'ilike', self),
@@ -18,70 +18,70 @@
                        ('customer_document', 'ilike', self)
                    ]"/>
 
-            <field name="account_id"/>
-            <field name="sale_order_id"/>
-            <field name="customer_document"/>
-            <field name="status"/>
-            <field name="state"/>
+                <field name="account_id"/>
+                <field name="sale_order_id"/>
+                <field name="customer_document"/>
+                <field name="status"/>
+                <field name="state"/>
 
-            <separator/>
+                <separator/>
 
-            <!-- Filtros -->
-            <filter name="draft"
-                    string="Pendientes"
-                    domain="[('state','=','draft')]"/>
+                <!-- Filtros -->
+                <filter name="draft"
+                        string="Pendientes"
+                        domain="[('state','=','draft')]"/>
 
-            <filter name="sale_created"
-                    string="Cotización creada"
-                    domain="[('state','=','sale_created')]"/>
+                <filter name="sale_created"
+                        string="Cotización creada"
+                        domain="[('state','=','sale_created')]"/>
 
-            <filter name="canceled"
-                    string="Canceladas"
-                    domain="[('state','=','canceled')]"/>
+                <filter name="canceled"
+                        string="Canceladas"
+                        domain="[('state','=','canceled')]"/>
 
-            <separator/>
+                <separator/>
 
-            <filter name="with_sale"
-                    string="Con cotización"
-                    domain="[('sale_order_id','!=',False)]"/>
+                <filter name="with_sale"
+                        string="Con cotización"
+                        domain="[('sale_order_id','!=',False)]"/>
 
-            <filter name="without_sale"
-                    string="Sin cotización"
-                    domain="[('sale_order_id','=',False)]"/>
+                <filter name="without_sale"
+                        string="Sin cotización"
+                        domain="[('sale_order_id','=',False)]"/>
 
-            <separator/>
+                <separator/>
 
-            <filter name="created_today"
-                    string="Hoy"
-                    domain="[('created_at','&gt;=', context_today().strftime('%%Y-%%m-%%d 00:00:00'))]"/>
+                <filter name="created_today"
+                        string="Hoy"
+                        domain="[('created_at','&gt;=', context_today().strftime('%%Y-%%m-%%d 00:00:00'))]"/>
 
-            <group expand="0" string="Agrupar por">
+                <group expand="0" string="Agrupar por">
 
-                <filter name="group_account"
-                        string="Cuenta"
-                        context="{'group_by':'account_id'}"/>
+                    <filter name="group_account"
+                            string="Cuenta"
+                            context="{'group_by':'account_id'}"/>
 
-                <filter name="group_state"
-                        string="Estado Odoo"
-                        context="{'group_by':'state'}"/>
+                    <filter name="group_state"
+                            string="Estado Odoo"
+                            context="{'group_by':'state'}"/>
 
-                <filter name="group_status"
-                        string="Estado Falabella"
-                        context="{'group_by':'status'}"/>
+                    <filter name="group_status"
+                            string="Estado Falabella"
+                            context="{'group_by':'status'}"/>
 
-                <filter name="group_customer"
-                        string="Cliente"
-                        context="{'group_by':'customer_name'}"/>
+                    <filter name="group_customer"
+                            string="Cliente"
+                            context="{'group_by':'customer_name'}"/>
 
-                <filter name="group_created"
-                        string="Fecha creación"
-                        context="{'group_by':'created_at'}"/>
+                    <filter name="group_created"
+                            string="Fecha creación"
+                            context="{'group_by':'created_at'}"/>
 
-            </group>
+                </group>
 
-        </search>
-    </field>
-</record>
+            </search>
+        </field>
+    </record>
 
     <record id="view_falabella_order_list" model="ir.ui.view">
         <field name="name">falabella.order.list</field>
@@ -162,7 +162,7 @@
                     </div>
                     <group>
                         <group>
-                            <field name="account_id" readonly="state != 'draft'"/>
+                            <field name="account_id"  domain="[('active','=',True)]" readonly="state != 'draft'"/>
                             <field name="sale_order_id" readonly="1"/>
                             <field name="order_id" readonly="state != 'draft'"/>
                             <!--<field name="order_number"/>-->

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="falabella_account_default" model="falabella.account">
+        <field name="name">API Falabella</field>
+         <field name="image_1920"
+           type="base64"
+           file="prb_falabella_seller_center/static/src/img/logo-2026.png"/>
+        <field name="user_id_api">USUARIO_API</field>
+        <field name="api_key">CLAVE_API</field>
+        <field name="api_url">
+            https://sellercenter-api.falabella.com/
+        </field>
+        <field name="version">1.0</field>
+        <field name="format">JSON</field>
+        <field name="active">True</field>
+    </record>
+
+</odoo>

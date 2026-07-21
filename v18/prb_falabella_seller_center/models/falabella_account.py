@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields, _
-from odoo.exceptions import UserError
-import json
+from odoo import models, fields, api, _
+
+import logging
 from datetime import timedelta
-from odoo import fields
+
+_logger = logging.getLogger(__name__)
 
 
 class FalabellaAccount(models.Model):
     _name = "falabella.account"
     _description = "Cuenta Falabella Seller Center"
+    active = fields.Boolean(string="Activo", default=True, copy=False, )
+
+    image_1920 = fields.Image(string="Logo", max_width=1920, max_height=1920, )
 
     name = fields.Char(string="Nombre", required=True)
     user_id_api = fields.Char(string="User ID", required=True)
@@ -29,9 +33,12 @@ class FalabellaAccount(models.Model):
         default="JSON",
         required=True,
     )
-    active = fields.Boolean(default=True)
 
     last_response = fields.Text(string="Última respuesta")
+    last_order_sync = fields.Datetime(
+        string="Última sincronización de órdenes",
+        copy=False,
+    )
 
     def action_test_connection(self):
         for account in self:
@@ -50,117 +57,29 @@ class FalabellaAccount(models.Model):
 
     # Sincronizar ordenes
     def action_sync_orders(self):
-        total_created = 0
-        total_updated = 0
-        today = fields.Datetime.now()
-        yesterday = today - timedelta(days=1)
-
-        FalabellaOrder = self.env["falabella.order"].sudo()
-        print("today:", today)
-        print("yesterday:", yesterday)
-        for account in self:
-            response = self.env["falabella.api.service.orders"].get_orders(
-                account,
-                extra_params={
-                    "Status": "pending",
-                    "CreatedAfter": yesterday.strftime("%Y-%m-%dT%H:%M:%S"),
-                    "CreatedBefore": today.strftime("%Y-%m-%dT%H:%M:%S"),
-                    "Limit": 50,
-                    "Offset": 0,
-                }
+        accounts = self.sudo().search([
+            ("active", "=", True),
+        ])
+        if not accounts:
+            _logger.info(
+                "No existen cuentas Falabella activas para sincronizar."
             )
-            orders = self._extract_orders(response)
-            print("orders", orders)
-            for order in orders:
-                '''
-                OrderId - string - Identificador de este pedido asignado por el Falabella Seller Center
-                CustomerFirstName - string - El nombre del cliente
-                CustomerLastName - string - El apellido del cliente
-                OrderNumber - string - El número de pedido
-                PaymentMethod - string - La forma de pago
-                DeliveryInfo - string - Información sobre la entrega de ese pedido
-                Price - Float - El importe total de este pedido
-                GiftOption - Boolean - 1 si el artículo es un regalo, 0 si no lo es
-                GiftMessage - string - Mensaje de regalo según lo especificado por el cliente
-                CreatedAt - DateTime - Fecha y hora en que se realizó el pedido
-                UpdatedAt - DateTime - Fecha y hora de la última modificación de la orden
-                AddressBilling - Subsection-objeto - Nodo que contiene nodos adicionales, que conforman la dirección de facturación: Nombre, Apellido, Teléfono, Teléfono2, Dirección1, Dirección2, Ciudad, Código postal, País
-                AddressShipping - Subsection-objeto - Nodo que contiene nodos adicionales, que conforman la dirección de envío: Nombre, Apellido, Teléfono, Teléfono2, Dirección1, Dirección2, Ciudad, Código postal, País
-                NationalRegistrationNumber - string - Se requiere en algunos países
-                ItemsCount - Integer - Número de artículos en orden
-                Statuses - Array - Estados únicos de los artículos del pedido. (pista: puede encontrar todos los diferentes códigos de estado en el ejemplo de respuesta)
-                PromisedShippingTime - DateTime - Corresponde a la fecha en que la orden debe ser entregada al operador logístico. Esfundamental cumplir con este plazo para evitar adelantos o retrasos en el envío, ya que cualquier desviación podría generar penalizaciones.
-                ExtraAttributes - String-objeto  - Atributos extra que fueron pasados a Falabella Seller Center en la llamada getMarketPlaceOrders. Es una cadena JSON que el cliente debe analizar.
-                ExtraBillingAttributes - String-objeto - Nodo que contiene información adicional para facturación: LegalId FiscalPerson, DocumentType, ReceiverRegion, ReceiverAddress, ReceiverPostcode, ReceiverLegalName, ReceiverMunicipality, ReceiverTypeRegimen, CustomerVerifierDigit
-                ShippingType - String - Modalidad de fulfillment y de delivery de la orden
-                InvoiceRequired - Boolean - Entrega valor True(“Factura empresa” en Colombia) si el documento es factura, y valor False si este es una boleta (“Factura persona natural” en Colombia).
-                SellerWarehouseId - String - ID único de bodega asignado por el Seller.
-                FacilityId - String - ID único de bodega asignado por Falabella.
-                '''
-
-                order_id = order.get("OrderId")
-
-                AddressBilling = order.get("AddressBilling")
-                if not order_id:
-                    continue
-                vals = {
-                    "account_id": account.id,
-                    "order_id": order_id,
-                    "order_number": order.get("OrderNumber"),
-                    "customer_name": order.get("CustomerFirstName"),
-                    "customer_lastname": order.get("CustomerLastName"),
-                    "customer_document": order.get("NationalRegistrationNumber"),
-                    "created_at": order.get("CreatedAt"),
-                    "update_at": order.get("UpdatedAt"),
-
-                    "address1": AddressBilling.get("Address1"),
-                    "address2": AddressBilling.get("Address2"),
-                    "address3": AddressBilling.get("Address3"),
-                    "address4": AddressBilling.get("Address4"),
-                    "address5": AddressBilling.get("Address5"),
-                    "customerEmail": AddressBilling.get("CustomerEmail"),
-                    "city": AddressBilling.get("City"),
-                    "ward": AddressBilling.get("Ward"),
-                    "region": AddressBilling.get("Region"),
-                    "postcode": AddressBilling.get("PostCode"),
-                    "country": AddressBilling.get("Country"),
-                    "phone": AddressBilling.get("Phone"),
-                    "phone2": AddressBilling.get("Phone2"),
-
-                    "status": order.get("Statuses", [{}])[0].get("Status")
-                    if isinstance(order.get("Statuses"), list) else False,
-                    "grand_total": float(order.get("GrandTotal") or 0.0),
-                    #"raw_response": json.dumps(order, indent=4, ensure_ascii=False),
-                }
-
-                print("val222s", vals)
-                falabella_order = FalabellaOrder.search([
-                    ("account_id", "=", account.id),
-                    ("order_id", "=", order_id),
-                ], limit=1)
-
-                if falabella_order:
-                    falabella_order.write(vals)
-                    total_updated += 1
-                else:
-                    falabella_order = FalabellaOrder.create(vals)
-                    total_created += 1
-
-                falabella_order.action_sync_order_items()
-
-            #account.last_response = json.dumps(response, indent=4, ensure_ascii=False)
+            return True
+        result = self._sync_orders_saga()
 
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
                 "title": _("Falabella"),
-                "message": _("Órdenes sincronizadas. Creadas: %s | Actualizadas: %s") % (
-                    total_created,
-                    total_updated,
-                ),
-                "type": "success",
-                "sticky": False,
+                "message": _(
+                    "Órdenes sincronizadas. "
+                    "Creadas: %(created)s | "
+                    "Actualizadas: %(updated)s | "
+                    "Errores: %(errors)s"
+                ) % result,
+                "type": "warning" if result["errors"] else "success",
+                "sticky": bool(result["errors"]),
             },
         }
 
@@ -189,6 +108,193 @@ class FalabellaAccount(models.Model):
                         orders.extend(order_data)
 
         return orders
+
+    @api.model
+    def _cron_sync_orders(self):
+        accounts = self.sudo().search([
+            ("active", "=", True),
+        ])
+
+        if not accounts:
+            _logger.info(
+                "No existen cuentas Falabella activas para sincronizar."
+            )
+            return True
+
+        result = accounts._sync_orders_saga()
+
+        _logger.info(
+            "Sincronización automática Falabella finalizada. "
+            "Creadas: %s | Actualizadas: %s | Errores: %s",
+            result["created"],
+            result["updated"],
+            result["errors"],
+        )
+
+        return True
+
+    def _sync_orders_saga(self):
+        total_created = 0
+        total_updated = 0
+        total_errors = 0
+
+        FalabellaOrder = self.env["falabella.order"].sudo()
+
+        for account in self:
+            now = fields.Datetime.now()
+            date_from = account.last_order_sync or (
+                    now - timedelta(days=1)
+            )
+
+            account_has_errors = False
+
+            try:
+                response = self.env[
+                    "falabella.api.service.orders"
+                ].get_orders(
+                    account,
+                    extra_params={
+                        "Status": "pending",
+                        "CreatedAfter": date_from.strftime(
+                            "%Y-%m-%dT%H:%M:%S"
+                        ),
+                        "CreatedBefore": now.strftime(
+                            "%Y-%m-%dT%H:%M:%S"
+                        ),
+                        "Limit": 50,
+                        "Offset": 0,
+                    },
+                )
+
+                orders = account._extract_orders(response)
+
+                _logger.info(
+                    "Cuenta Falabella %s: se encontraron %s órdenes "
+                    "entre %s y %s.",
+                    account.display_name,
+                    len(orders),
+                    date_from,
+                    now,
+                )
+
+                for order_data in orders:
+                    try:
+                        with account.env.cr.savepoint():
+                            order_id = order_data.get("OrderId")
+
+                            if not order_id:
+                                _logger.warning(
+                                    "Orden Falabella omitida porque "
+                                    "no tiene OrderId."
+                                )
+                                continue
+
+                            address_billing = (
+                                    order_data.get("AddressBilling") or {}
+                            )
+
+                            statuses = order_data.get("Statuses") or []
+                            status = False
+
+                            if isinstance(statuses, list) and statuses:
+                                first_status = statuses[0]
+
+                                if isinstance(first_status, dict):
+                                    status = first_status.get("Status")
+
+                            vals = {
+                                "account_id": account.id,
+                                "order_id": order_id,
+                                "order_number": order_data.get(
+                                    "OrderNumber"
+                                ),
+                                "customer_name": order_data.get(
+                                    "CustomerFirstName"
+                                ),
+                                "customer_lastname": order_data.get(
+                                    "CustomerLastName"
+                                ),
+                                "customer_document": order_data.get(
+                                    "NationalRegistrationNumber"
+                                ),
+                                "created_at": order_data.get("CreatedAt"),
+                                "update_at": order_data.get("UpdatedAt"),
+
+                                "address1": address_billing.get("Address1"),
+                                "address2": address_billing.get("Address2"),
+                                "address3": address_billing.get("Address3"),
+                                "address4": address_billing.get("Address4"),
+                                "address5": address_billing.get("Address5"),
+                                "customerEmail": address_billing.get(
+                                    "CustomerEmail"
+                                ),
+                                "city": address_billing.get("City"),
+                                "ward": address_billing.get("Ward"),
+                                "region": address_billing.get("Region"),
+                                "postcode": address_billing.get("PostCode"),
+                                "country": address_billing.get("Country"),
+                                "phone": address_billing.get("Phone"),
+                                "phone2": address_billing.get("Phone2"),
+                                "status": status,
+                                "grand_total": float(
+                                    order_data.get("GrandTotal") or 0.0
+                                ),
+                            }
+
+                            falabella_order = FalabellaOrder.search(
+                                [
+                                    ("account_id", "=", account.id),
+                                    ("order_id", "=", order_id),
+                                ],
+                                limit=1,
+                            )
+
+                            is_new = not bool(falabella_order)
+
+                            if falabella_order:
+                                falabella_order.write(vals)
+                            else:
+                                falabella_order = FalabellaOrder.create(
+                                    vals
+                                )
+
+                            falabella_order.action_sync_order_items()
+
+                            if is_new:
+                                total_created += 1
+                            else:
+                                total_updated += 1
+
+                    except Exception:
+                        account_has_errors = True
+                        total_errors += 1
+
+                        _logger.exception(
+                            "Error sincronizando la orden Falabella %s "
+                            "de la cuenta %s.",
+                            order_data.get("OrderNumber")
+                            or order_data.get("OrderId"),
+                            account.display_name,
+                        )
+
+                if not account_has_errors:
+                    account.write({
+                        "last_order_sync": now,
+                    })
+
+            except Exception:
+                total_errors += 1
+
+                _logger.exception(
+                    "Error obteniendo órdenes de la cuenta Falabella %s.",
+                    account.display_name,
+                )
+
+        return {
+            "created": total_created,
+            "updated": total_updated,
+            "errors": total_errors,
+        }
 
     def action_sync_brands(self):
         total_created = 0

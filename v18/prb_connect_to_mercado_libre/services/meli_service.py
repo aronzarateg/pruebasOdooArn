@@ -24,14 +24,21 @@ class MeliService(models.AbstractModel):
             },
             timeout=30,
         )
-        response.raise_for_status()
+
+        if response.status_code >= 400:
+            raise UserError(
+                "Error obteniendo token Mercado Libre:\n"
+                f"Status: {response.status_code}\n"
+                f"Respuesta: {response.text}"
+            )
+
         data = response.json()
 
         account.sudo().write({
             "access_token": data.get("access_token"),
             "refresh_token": data.get("refresh_token"),
-            "meli_user_id": str(data.get("user_id")),
-            "token_expires_in": data.get("expires_in"),
+            "meli_user_id": str(data.get("user_id") or ""),
+            "token_expires_in": data.get("expires_in") or 0,
         })
 
         return data
@@ -63,6 +70,11 @@ class MeliService(models.AbstractModel):
         return data
 
     def request(self, account, method, endpoint, params=None, data=None):
+        if not account.access_token:
+            raise UserError(
+                "Primero debes conectar la cuenta de Mercado Libre para generar el Access Token."
+            )
+
         headers = {
             "Authorization": f"Bearer {account.access_token}",
             "Content-Type": "application/json",

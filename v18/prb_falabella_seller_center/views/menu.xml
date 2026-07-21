@@ -7,19 +7,23 @@
               sequence="0"
               web_icon="prb_falabella_seller_center,static/description/icon.png"/>
 
+    <!-- Sincronizaciones -->
+    <menuitem id="menu_falabella_syncs"
+              name="Sincronizaciones"
+              parent="menu_falabella_root"
+              sequence="10"/>
+
+
+    <!-- configuraciones -->
     <menuitem id="menu_falabella_config"
               name="Configuración"
               parent="menu_falabella_root"
-              sequence="10"/>
+              sequence="20"/>
 
     <menuitem id="menu_falabella_accounts"
               name="Cuentas"
               parent="menu_falabella_config"
               action="action_falabella_account"
               sequence="10"/>
-    <menuitem id="menu_falabella_brands"
-          name="Marcas"
-          parent="menu_falabella_root"
-          action="action_falabella_brand"
-          sequence="20"/>
+
 </odoo>

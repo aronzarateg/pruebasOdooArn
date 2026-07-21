@@ -1,5 +1,6 @@
 from odoo import http
 from odoo.http import request
+import json
 
 
 class MercadoLibreController(http.Controller):
@@ -7,14 +8,23 @@ class MercadoLibreController(http.Controller):
     @http.route("/mercadolibre_v2/callback", auth="public", type="http", csrf=False)
     def meli_callback(self, **kw):
         code = kw.get("code")
+        state = kw.get("state")
 
         if not code:
             return "No llegó código de autorización."
 
-        account = request.env["meli.account"].sudo().search([], limit=1)
+        if not state:
+            return "No llegó el identificador de la cuenta Mercado Libre."
 
-        if not account:
-            return "No existe una cuenta Mercado Libre configurada en Odoo."
+        try:
+            account_id = int(state)
+        except Exception:
+            return "El identificador de la cuenta Mercado Libre no es válido."
+
+        account = request.env["meli.account"].sudo().browse(account_id)
+
+        if not account.exists():
+            return "No existe la cuenta Mercado Libre indicada."
 
         request.env["meli.service"].sudo().exchange_code_for_token(account, code)
 
@@ -23,7 +33,7 @@ class MercadoLibreController(http.Controller):
         <p>Ya puedes cerrar esta ventana y volver a Odoo.</p>
         """
 
-    @http.route("/mercadolibre_v2/notifications", auth="public", type="json", methods=["POST"], csrf=False, )
+    @http.route("/mercadolibre_v2/notifications", auth="public", type="json", methods=["POST"], csrf=False)
     def meli_notifications(self, **kw):
         data = request.jsonrequest or {}
 

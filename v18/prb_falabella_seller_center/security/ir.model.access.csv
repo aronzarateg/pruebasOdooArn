@@ -1,3 +1,14 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_falabella_account,falabella.account,model_falabella_account,base.group_user,1,1,1,1
 access_falabella_brand,falabella.brand,model_falabella_brand,base.group_user,1,1,1,1
+
+access_falabella_order,falabella.order,model_falabella_order,base.group_user,1,1,1,1
+access_falabella_order_line,falabella.order.line,model_falabella_order_line,base.group_user,1,1,1,1
+access_falabella_category,falabella.category,model_falabella_category,base.group_user,1,1,1,1
+access_falabella_category_attribute,falabella.category.attribute,model_falabella_category_attribute,base.group_user,1,1,1,1
+access_product_falabella_attribute_value,product.falabella.attribute.value,model_product_falabella_attribute_value,base.group_user,1,1,1,1
+
+
+
+
+

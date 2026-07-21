@@ -11,6 +11,22 @@
     <menuitem id="menu_meli_root"
               name="Mercado Libre"
               parent="menu_meli_app_root"
+              sequence="1"/>
+
+    <menuitem id="menu_publications_config"
+              name="Publicaciones"
+              parent="menu_meli_app_root"
+              sequence="2"/>
+
+    <menuitem id="menu_meli_config"
+              name="Configuracion"
+              parent="menu_meli_app_root"
+              sequence="20"/>
+
+    <!-- MENÚ MERCADO LIBRE -Configuracion-->
+    <menuitem id="menu_stock_config_settings_meli"
+              name="Config. Mercado Libre"
+              parent="menu_meli_config"
               sequence="10"/>
 
 </odoo>

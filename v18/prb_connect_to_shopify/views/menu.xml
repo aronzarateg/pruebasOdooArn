@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- APP PRINCIPAL -->
+    <menuitem id="menu_shopify_app_root"
+              name="Api shopify"
+              sequence="1"
+              web_icon="prb_connect_to_shopify,static/description/icon.png"/>
+
+    <!-- MENÚ MERCADO LIBRE -->
+    <menuitem id="menu_shopify_root"
+              name="Shopify"
+              parent="menu_shopify_app_root"
+              sequence="1"/>
+
+</odoo>

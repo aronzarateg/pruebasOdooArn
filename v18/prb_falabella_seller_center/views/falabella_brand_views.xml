@@ -46,5 +46,10 @@
         <field name="res_model">falabella.brand</field>
         <field name="view_mode">list,form</field>
     </record>
+    <menuitem id="menu_falabella_brands"
+              name="Marcas"
+              parent="prb_falabella_seller_center.menu_falabella_syncs"
+              action="action_falabella_brand"
+              sequence="1"/>
 
 </odoo>

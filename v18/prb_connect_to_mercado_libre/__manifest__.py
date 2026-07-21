@@ -19,6 +19,10 @@
         "views/meli_account_views.xml",
         "views/meli_order_views.xml",
         "views/meli_product_views.xml",
+        "views/meli_category.xml",
+        "views/meli_attribute.xml",
+        "views/meli_brand.xml",
+        "views/meli_publication.xml",
 
         "views/product_template.xml",
     ],

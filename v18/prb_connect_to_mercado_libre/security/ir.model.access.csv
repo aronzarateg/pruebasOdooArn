@@ -3,5 +3,15 @@ access_meli_account,meli.account,model_meli_account,base.group_system,1,1,1,1
 access_meli_order,meli.order,model_meli_order,base.group_user,1,1,1,1
 access_meli_product,meli.product,model_meli_product,base.group_user,1,1,1,1
 access_meli_category,meli.category,model_meli_category,base.group_user,1,1,1,1
+access_meli_attribute,meli.attribute,model_meli_attribute,base.group_user,1,1,1,1
+access_meli_category,meli.category,model_meli_category,base.group_user,1,1,1,1
+access_meli_brand,meli.brand,model_meli_brand,base.group_user,1,1,1,1
+access_meli_brand,meli.brand,model_meli_brand,base.group_user,1,1,1,1
+access_meli_publication,meli.publication,model_meli_publication,base.group_user,1,1,1,1
+access_meli_publication_attribute,meli.publication.attribute,model_meli_publication_attribute,base.group_user,1,1,1,1
+
+
+
+
 
 

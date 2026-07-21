@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="meli_brand_view_form" model="ir.ui.view">
+        <field name="name">meli.brand.view.form</field>
+        <field name="model">meli.brand</field>
+        <field name="arch" type="xml">
+            <form string="Marca">
+                <header>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="meli_id"/>
+                            <field name="domain_id"/>
+                            <field name="category_id"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+
+        </field>
+    </record>
+
+    <record id="meli_brand_view_list" model="ir.ui.view">
+        <field name="name">meli.brand.view.list</field>
+        <field name="model">meli.brand</field>
+        <field name="arch" type="xml">
+            <list string="Marca">
+                <field name="name"/>
+                <field name="meli_id"/>
+                <field name="domain_id"/>
+                <field name="category_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+
+    <record id="meli_brand_view_action" model="ir.actions.act_window">
+        <field name="name">Marca</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">meli.brand</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                No hay registos creados, crea el primero.
+            </p>
+        </field>
+    </record>
+
+    <menuitem name="Marca"
+              id="meli_brand_menu"
+              parent="prb_connect_to_mercado_libre.menu_stock_config_settings_meli"
+              sequence="3"
+              action="meli_brand_view_action"/>
+</odoo>

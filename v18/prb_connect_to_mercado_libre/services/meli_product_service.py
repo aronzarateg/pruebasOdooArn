@@ -11,7 +11,9 @@ class MeliProductService(models.AbstractModel):
         self._validate_basic_data(account, product_template)
 
         product_variant = product_template.product_variant_id
+        print("product_variant", product_variant)
         category = self._get_or_predict_category(account, product_template)
+        print("category", category)
 
         self.env["meli.category.service"].sync_category_attributes(account, category)
 
@@ -19,7 +21,7 @@ class MeliProductService(models.AbstractModel):
         self._validate_price(product_template, category)
 
         payload = self._prepare_item_payload(account, product_template, category)
-
+        print("payload", payload)
         _logger.info("Payload Mercado Libre /items: %s", payload)
 
         response = self.env["meli.service"].post(
@@ -83,10 +85,13 @@ class MeliProductService(models.AbstractModel):
             ("category_id", "=", category.id),
             ("required", "=", True),
         ])
-
+        print("required_attributes", required_attributes)
         for attr in required_attributes:
+            print("product_template", product_template)
+            print("attr", attr)
             value = self._get_product_attribute_value(product_template, attr)
 
+            print("value", value)
             if not value:
                 missing.append(attr.name)
 
@@ -98,14 +103,16 @@ class MeliProductService(models.AbstractModel):
             )
 
     def _get_product_attribute_value(self, product_template, attr):
+        print("_get_product_attribute_value")
         attr_id = attr.meli_attribute_id
-
+        print("attr_id:",attr_id)
         mapping = {
             "BRAND": product_template.meli_brand,
             "MODEL": product_template.meli_model or product_template.default_code,
             "COLOR": getattr(product_template, "meli_color", False),
             "BACKPACK_TYPE": getattr(product_template, "meli_backpack_type", False),
         }
+        print("mapping:",mapping)
 
         return mapping.get(attr_id)
 

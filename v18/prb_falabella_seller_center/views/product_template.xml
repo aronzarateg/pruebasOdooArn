@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="ih_falabella_product_template_form_view" model="ir.ui.view">
+        <field name="name">ih.falabella.product.template.form.view</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Falabella - Información" name="sagafalabella_information">
+                    <group>
+                        <group string="Configuración">
+                            <field name="falabella_account_id"/>
+
+                            <field name="falabella_brand_id"
+                                   domain="[('account_id', '=', falabella_account_id)]"/>
+
+                            <field name="falabella_category_id"
+                                   domain="[('account_id', '=', falabella_account_id), ('is_leaf', '=', True)]"/>
+                        </group>
+
+                        <group string="Estado Falabella">
+                            <field name="falabella_status" readonly="1"/>
+                            <field name="falabella_item_id" readonly="1"/>
+                            <field name="falabella_request_id" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="Acciones">
+                        <button name="action_sync_falabella_attributes"
+                                type="object"
+                                string="Sincronizar atributos"
+                                class="btn-secondary"
+                                invisible="not falabella_account_id or not falabella_category_id"/>
+
+                        <button name="action_publish_falabella"
+                                type="object"
+                                string="Publicar en Falabella"
+                                class="btn-primary"
+                                invisible="not falabella_account_id or not falabella_category_id or not falabella_category_id.attributesetid"/>
+
+                        <button name="action_check_falabella_feed"
+                                type="object"
+                                string="Consultar estado"
+                                class="btn-secondary"
+                                invisible="not falabella_request_id"/>
+                    </group>
+
+                    <group string="Atributos de publicación">
+                        <field name="falabella_attribute_value_ids" nolabel="1">
+                            <list editable="bottom">
+                                <field name="attribute_id"/>
+                                <field name="label" readonly="1"/>
+                                <field name="is_mandatory" readonly="1"/>
+                                <field name="value"/>
+                            </list>
+                        </field>
+                    </group>
+
+                    <group string="Respuesta API">
+                        <field name="falabella_response" nolabel="1" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+
+

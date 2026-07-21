@@ -1,0 +1,31 @@
+
+se soncronizo ordenes falta testear las lineas de cada orden
+
+1. Probar conexión - ok
+2. Sincronizar marcas - ok
+3. Sincronizar categorías - ok
+4. Sincronizar atributos por categoría - ok
+5. Importar órdenes - ok
+6. Crear clientes desde órdenes
+7. Crear sale.order
+8. Publicar productos
+9. Actualizar stock/precio
+
+Publicar producto
+1. Sincronizar Marcas
+        ↓
+2. Sincronizar Categorías
+        ↓
+3. Sincronizar Atributos de la Categoría
+        ↓
+4. Configurar el producto en Odoo
+        ↓
+5. Validar información obligatoria
+        ↓
+6. Publicar producto
+        ↓
+7. Actualizar stock
+        ↓
+8. Actualizar precio
+        ↓
+9. Descargar imágenes si es necesario

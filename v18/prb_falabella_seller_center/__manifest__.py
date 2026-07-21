@@ -8,7 +8,10 @@
     "data": [
         "security/ir.model.access.csv",
         "views/falabella_account_views.xml",
-        "views/falabella_brand_views.xml",
+        #"views/falabella_brand_views.xml",
+        "views/falabella_order.xml",
+        "views/product_template.xml",
+        #"views/falabella_category.xml",
         "views/menu.xml",
     ],
     "installable": True,

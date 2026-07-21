@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_falabella_category_list" model="ir.ui.view">
+        <field name="name">falabella.category.list</field>
+        <field name="model">falabella.category</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="account_id" optional="show"/>
+                <field name="category_id" optional="show"/>
+                <field name="name" optional="show"/>
+                <field name="parent_category_id_api" optional="show"/>
+                <field name="parent_id" optional="show"/>
+                <field name="child_ids" optional="show"/>
+                <field name="is_leaf" optional="show"/>
+                <field name="active" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_falabella_category_form" model="ir.ui.view">
+        <field name="name">falabella.category.form</field>
+        <field name="model">falabella.category</field>
+        <field name="arch" type="xml">
+            <form string="Categoria Falabella">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="account_id"/>
+                            <field name="category_id"/>
+                            <field name="name"/>
+                            <field name="parent_category_id_api"/>
+                            <field name="parent_id"/>
+                        </group>
+                        <group>
+                            <field name="child_ids"/>
+                            <field name="is_leaf"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_falabella_category" model="ir.actions.act_window">
+        <field name="name">Categoria Falabella</field>
+        <field name="res_model">falabella.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_falabella_category"
+              name="Categorias"
+              parent="prb_falabella_seller_center.menu_falabella_syncs"
+              action="action_falabella_category"
+              sequence="3"/>
+
+</odoo>

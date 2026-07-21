@@ -20,10 +20,6 @@
               parent="menu_falabella_root"
               sequence="20"/>
 
-    <menuitem id="menu_falabella_accounts"
-              name="Cuentas"
-              parent="menu_falabella_config"
-              action="action_falabella_account"
-              sequence="10"/>
+
 
 </odoo>

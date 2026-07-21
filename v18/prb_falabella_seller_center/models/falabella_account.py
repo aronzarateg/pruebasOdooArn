@@ -133,7 +133,7 @@ class FalabellaAccount(models.Model):
                     #"raw_response": json.dumps(order, indent=4, ensure_ascii=False),
                 }
 
-                print("vals", vals)
+                print("val222s", vals)
                 falabella_order = FalabellaOrder.search([
                     ("account_id", "=", account.id),
                     ("order_id", "=", order_id),

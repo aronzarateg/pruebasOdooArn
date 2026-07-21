@@ -1,6 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <record id="view_falabella_order_search" model="ir.ui.view">
+    <field name="name">falabella.order.search</field>
+    <field name="model">falabella.order</field>
+    <field name="arch" type="xml">
+        <search string="Buscar órdenes Falabella">
+
+            <!-- Búsqueda principal -->
+            <field name="order_number"
+                   string="Orden"
+                   filter_domain="[
+                       '|','|','|',
+                       ('order_number', 'ilike', self),
+                       ('order_id', 'ilike', self),
+                       ('customer_name', 'ilike', self),
+                       ('customer_document', 'ilike', self)
+                   ]"/>
+
+            <field name="account_id"/>
+            <field name="sale_order_id"/>
+            <field name="customer_document"/>
+            <field name="status"/>
+            <field name="state"/>
+
+            <separator/>
+
+            <!-- Filtros -->
+            <filter name="draft"
+                    string="Pendientes"
+                    domain="[('state','=','draft')]"/>
+
+            <filter name="sale_created"
+                    string="Cotización creada"
+                    domain="[('state','=','sale_created')]"/>
+
+            <filter name="canceled"
+                    string="Canceladas"
+                    domain="[('state','=','canceled')]"/>
+
+            <separator/>
+
+            <filter name="with_sale"
+                    string="Con cotización"
+                    domain="[('sale_order_id','!=',False)]"/>
+
+            <filter name="without_sale"
+                    string="Sin cotización"
+                    domain="[('sale_order_id','=',False)]"/>
+
+            <separator/>
+
+            <filter name="created_today"
+                    string="Hoy"
+                    domain="[('created_at','&gt;=', context_today().strftime('%%Y-%%m-%%d 00:00:00'))]"/>
+
+            <group expand="0" string="Agrupar por">
+
+                <filter name="group_account"
+                        string="Cuenta"
+                        context="{'group_by':'account_id'}"/>
+
+                <filter name="group_state"
+                        string="Estado Odoo"
+                        context="{'group_by':'state'}"/>
+
+                <filter name="group_status"
+                        string="Estado Falabella"
+                        context="{'group_by':'status'}"/>
+
+                <filter name="group_customer"
+                        string="Cliente"
+                        context="{'group_by':'customer_name'}"/>
+
+                <filter name="group_created"
+                        string="Fecha creación"
+                        context="{'group_by':'created_at'}"/>
+
+            </group>
+
+        </search>
+    </field>
+</record>
+
     <record id="view_falabella_order_list" model="ir.ui.view">
         <field name="name">falabella.order.list</field>
         <field name="model">falabella.order</field>
@@ -16,6 +98,9 @@
                 <field name="grand_total" optional="show"/>
                 <field name="created_at" optional="show"/>
                 <field name="update_at" optional="show"/>
+                <field name="state" decoration-success="state == 'sale_created'" decoration-info="state == 'draft'"
+                       decoration-primary="state == 'sent'" widget="badge" optional="show"/>
+
             </list>
         </field>
     </record>
@@ -25,39 +110,88 @@
         <field name="model">falabella.order</field>
         <field name="arch" type="xml">
             <form string="Ordenes Falabella">
+                <header>
+                    <button
+                            name="action_create_sale_order"
+                            string="Crear cotización"
+                            type="object"
+                            class="oe_highlight"
+                            icon="fa-shopping-cart"
+                            invisible="sale_order_id"
+                    />
+
+                    <!--<button
+                            name="action_view_sale_order"
+                            string="Ver cotización"
+                            type="object"
+                            icon="fa-external-link"
+                            invisible="not sale_order_id"
+                    />-->
+
+                    <field name="state" widget="statusbar"/>
+                </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button
+                                name="action_view_sale_order"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-shopping-cart"
+                                invisible="sale_order_count == 0"
+                        >
+                            <field
+                                    name="sale_order_count"
+                                    widget="statinfo"
+                                    string="Cotización"
+                            />
+                        </button>
+                    </div>
+
+                    <widget
+                            name="web_ribbon"
+                            title="Cotización creada"
+                            bg_color="text-bg-success"
+                            invisible="not sale_order_id"
+                    />
+
+                    <div class="oe_title">
+                        <label for="order_number"/>
+                        <h1>
+                            <field name="order_number" readonly="state != 'draft'"/>
+                        </h1>
+                    </div>
                     <group>
                         <group>
-                            <field name="account_id"/>
-                            <field name="sale_order_id"/>
-                            <field name="order_id"/>
-                            <field name="order_number"/>
-                            <field name="grand_total"/>
-                            <field name="status"/>
-                            <field name="created_at"/>
-                            <field name="update_at"/>
+                            <field name="account_id" readonly="state != 'draft'"/>
+                            <field name="sale_order_id" readonly="1"/>
+                            <field name="order_id" readonly="state != 'draft'"/>
+                            <!--<field name="order_number"/>-->
+                            <field name="grand_total" readonly="state != 'draft'"/>
+                            <field name="status" readonly="state != 'draft'"/>
+                            <field name="created_at" readonly="state != 'draft'"/>
+                            <field name="update_at" readonly="state != 'draft'"/>
                         </group>
                         <group name="detail_cliente" string="Detalles cliente">
                             <group>
-                                <field name="customer_name"/>
-                                <field name="customer_lastname"/>
-                                <field name="customer_document"/>
-                                <field name="customerEmail"/>
-                                <field name="phone"/>
-                                <field name="phone2"/>
+                                <field name="customer_name" readonly="state != 'draft'"/>
+                                <field name="customer_lastname" readonly="state != 'draft'"/>
+                                <field name="customer_document" readonly="state != 'draft'"/>
+                                <field name="customerEmail" readonly="state != 'draft'"/>
+                                <field name="phone" readonly="state != 'draft'"/>
+                                <field name="phone2" readonly="state != 'draft'"/>
 
                             </group>
                             <group>
-                                <field name="address1"/>
-                                <field name="address2"/>
-                                <field name="address3"/>
-                                <field name="address4"/>
-                                <field name="address5"/>
-                                <field name="city"/>
-                                <field name="ward"/>
-                                <field name="region"/>
-                                <field name="postcode"/>
-                                <field name="country"/>
+                                <field name="address1" readonly="state != 'draft'"/>
+                                <field name="address2" readonly="state != 'draft'"/>
+                                <field name="address3" readonly="state != 'draft'"/>
+                                <field name="address4" readonly="state != 'draft'"/>
+                                <field name="address5" readonly="state != 'draft'"/>
+                                <field name="city" readonly="state != 'draft'"/>
+                                <field name="ward" readonly="state != 'draft'"/>
+                                <field name="region" readonly="state != 'draft'"/>
+                                <field name="postcode" readonly="state != 'draft'"/>
+                                <field name="country" readonly="state != 'draft'"/>
                             </group>
 
                         </group>
@@ -65,7 +199,7 @@
 
                     <notebook>
                         <page string="Líneas">
-                            <field name="line_ids" nolabel="1">
+                            <field name="line_ids" nolabel="1" readonly="state != 'draft'">
                                 <list editable="bottom">
                                     <field name="order_id" optional="show"/>
                                     <field name="order_item_id" optional="show"/>
@@ -74,9 +208,9 @@
                                     <field name="shop_sku" optional="show"/>
                                     <field name="quantity" optional="show"/>
                                     <field name="unit_price" optional="show"/>
-                                    <field name="paidPrice" optional="show"/>
-                                    <field name="taxAmount" optional="show"/>
-                                    <field name="shippingAmount" optional="show"/>
+                                    <field name="paid_price" optional="show"/>
+                                    <field name="tax_amount" optional="show"/>
+                                    <field name="shipping_amount" optional="show"/>
                                     <field name="status" optional="show"/>
                                 </list>
                             </field>

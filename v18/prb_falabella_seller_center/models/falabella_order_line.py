@@ -15,9 +15,9 @@ class FalabellaOrderLine(models.Model):
 
     unit_price = fields.Char(string="Precio", help="Precio original del artículo antes de descuentos o cupones")
 
-    paidPrice = fields.Char(string="Precio pagado", help="Precio pagado por el cliente final después de descuentos")
-    taxAmount = fields.Char(string="Importe impuesto", help="Importe del impuesto aplicado al artículo")
-    shippingAmount = fields.Char(string="Importe envío", help="Importe total de envío cobrado por el artículo")
+    paid_price = fields.Char(string="Precio pagado", help="Precio pagado por el cliente final después de descuentos")
+    tax_amount = fields.Char(string="Importe impuesto", help="Importe del impuesto aplicado al artículo")
+    shipping_amount = fields.Char(string="Importe envío", help="Importe total de envío cobrado por el artículo")
 
 
 

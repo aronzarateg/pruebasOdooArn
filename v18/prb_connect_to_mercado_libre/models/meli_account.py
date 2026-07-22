@@ -1,6 +1,8 @@
-from odoo import models, fields
+from odoo import models, fields, _
+from odoo.exceptions import UserError
 from urllib.parse import urlencode
 import logging
+from datetime import timedelta
 
 _logger = logging.getLogger(__name__)
 
@@ -8,17 +10,23 @@ _logger = logging.getLogger(__name__)
 class MeliAccount(models.Model):
     _name = "meli.account"
     _description = "Cuenta Mercado Libre"
+    _order = "active desc, name"
 
     name = fields.Char(required=True)
-    client_id = fields.Char(string="Client ID / App ID", required=True)
-    client_secret = fields.Char(required=True)
-    redirect_uri = fields.Char(required=True)
+
+    active = fields.Boolean(string="Activo", default=True,
+                            help="Permite activar o desactivar esta cuenta de Mercado Libre.", )
+
+    image_1920 = fields.Image(string="Logo", max_width=1920, max_height=1920, )
+    client_id = fields.Char(string="Client ID / App ID", required=True, help="Client ID / App ID")
+    client_secret = fields.Char(required=True, string="Client Secret", help="Client Secret")
+    redirect_uri = fields.Char(required=True, string="Redirect URIs", help="Redirect URI")
 
     access_token = fields.Char(readonly=True)
     refresh_token = fields.Char(readonly=True)
     meli_user_id = fields.Char(readonly=True)
     token_expires_in = fields.Integer(readonly=True)
-
+    token_expiration_date = fields.Datetime(string="Fecha de expiración del token", readonly=True, )
     site_id = fields.Selection([
         ("MPE", "Perú"),
         ("MLA", "Argentina"),
@@ -27,9 +35,26 @@ class MeliAccount(models.Model):
         ("MCO", "Colombia"),
         ("MLM", "México"),
     ], string="Site MELI", default="MPE", required=True)
+    last_order_sync = fields.Datetime(
+        string="Última sincronización de órdenes",
+        readonly=True,
+        copy=False,
+    )
+
+    def _check_active_account(self):
+        self.ensure_one()
+
+        if not self.active:
+            raise UserError(
+                _(
+                    "La cuenta de Mercado Libre '%s' se encuentra inactiva."
+                )
+                % self.display_name
+            )
 
     def action_connect_meli(self):
         self.ensure_one()
+        self._check_active_account()
 
         params = {
             "response_type": "code",
@@ -48,6 +73,7 @@ class MeliAccount(models.Model):
 
     def action_test_connection(self):
         self.ensure_one()
+        self._check_active_account()
 
         data = self.env["meli.service"].get(self, "/users/me")
 
@@ -62,9 +88,84 @@ class MeliAccount(models.Model):
             },
         }
 
-    def cron_refresh_tokens(self):
+    def action_sync_orders(self):
+        """
+        Método ejecutado manualmente desde el botón.
+        """
+        self.ensure_one()
+        self._check_active_account()
+
+        result = self._sync_orders()
+
+        total = result.get("total_processed", 0)
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Mercado Libre",
+                "message": (
+                    f"Órdenes sincronizadas correctamente. "
+                    f"Registros procesados: {total}"
+                ),
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    def _sync_orders(self, date_from=None, date_to=None):
+        """
+        Método reutilizable.
+
+        Puede llamarse desde:
+        - Botón
+        - Cron
+        - Otro método
+        - Shell de Odoo
+
+        :param date_from: Fecha inicial opcional.
+        :param date_to: Fecha final opcional.
+        """
+        self.ensure_one()
+        self._check_active_account()
+
+        return self.env["meli.order.service"].sync_orders(
+            account=self,
+            date_from=date_from,
+            date_to=date_to,
+        )
+
+
+    def _cron_sync_orders(self):
         accounts = self.search([
+            ("active", "=", True),
+            ("access_token", "!=", False),
+            ("meli_user_id", "!=", False),
+        ])
+        print("accounts", accounts)
+        for account in accounts:
+            try:
+                with self.env.cr.savepoint():
+                    account._sync_orders()
+
+            except Exception:
+                _logger.exception(
+                    "Error sincronizando órdenes para la cuenta %s",
+                    account.display_name,
+                )
+
+        return True
+
+    # CRONS
+    def cron_refresh_tokens(self):
+        renewal_limit = fields.Datetime.now() + timedelta(minutes=30)
+
+        accounts = self.search([
+            ("active", "=", True),
             ("refresh_token", "!=", False),
+            "|",
+            ("token_expiration_date", "=", False),
+            ("token_expiration_date", "<=", renewal_limit),
         ])
 
         service = self.env["meli.service"]
@@ -72,25 +173,13 @@ class MeliAccount(models.Model):
         for account in accounts:
             try:
                 service.refresh_token(account)
-            except Exception as e:
-                _logger.exception(e)
+            except Exception:
+                _logger.exception(
+                    "Error renovando token de Mercado Libre para la cuenta %s",
+                    account.display_name,
+                )
 
-    def action_sync_orders(self):
-        self.ensure_one()
-
-        self.env["meli.order.service"].sync_orders(self)
-
-        return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": "Mercado Libre",
-                "message": "Órdenes sincronizadas correctamente.",
-                "type": "success",
-                "sticky": False,
-            },
-        }
-
+    '''
     def action_sync_items(self):
         self.ensure_one()
 
@@ -107,7 +196,6 @@ class MeliAccount(models.Model):
                 "sticky": False,
             },
         }
-
     def action_sync_meli_categories(self):
         self.ensure_one()
 
@@ -149,6 +237,7 @@ class MeliAccount(models.Model):
             },
         }
 
+    
     def action_sync_meli_brands(self):
         self.ensure_one()
 
@@ -170,7 +259,7 @@ class MeliAccount(models.Model):
                 "sticky": False,
             },
         }
-
+    
     def cron_sync_meli_category_attributes(self):
         accounts = self.sudo().search([
             ("access_token", "!=", False),
@@ -192,3 +281,4 @@ class MeliAccount(models.Model):
                 account,
                 limit=30,
             )
+    '''

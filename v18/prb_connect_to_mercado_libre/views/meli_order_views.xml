@@ -43,7 +43,7 @@
 
     <menuitem id="menu_meli_order"
               name="Órdenes"
-              parent="prb_connect_to_mercado_libre.menu_meli_root"
+              parent="prb_connect_to_mercado_libre.menu_meli_orders"
               action="action_meli_order"
-              sequence="20"/>
+              sequence="1"/>
 </odoo>

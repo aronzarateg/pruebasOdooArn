@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo noupdate="1">
+
+    <record id="meli_account_peru" model="meli.account">
+        <field name="name">Mercado Libre Perú</field>
+        <field name="client_id">COLOCAR_CLIENT_ID</field>
+        <field name="client_secret">COLOCAR_CLIENT_SECRET</field>
+        <field name="redirect_uri">https://tu-dominio.com/mercadolibre_v2/callback</field>
+        <field name="site_id">MPE</field>
+        <field name="active" eval="True"/>
+        <field name="image_1920"
+               type="base64"
+               file="prb_connect_to_mercado_libre/static/src/img/logo_mercado_libre.png"/>
+    </record>
+
+</odoo>

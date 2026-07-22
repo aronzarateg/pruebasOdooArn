@@ -1,6 +1,8 @@
-from odoo import models
+from odoo import models, fields
 import requests
 from odoo.exceptions import UserError, ValidationError
+from datetime import timedelta
+
 
 class MeliService(models.AbstractModel):
     _name = "meli.service"
@@ -55,16 +57,20 @@ class MeliService(models.AbstractModel):
                 "client_id": account.client_id,
                 "client_secret": account.client_secret,
                 "refresh_token": account.refresh_token,
+
             },
             timeout=30,
         )
         response.raise_for_status()
         data = response.json()
-
+        expires_in = int(data.get("expires_in", 0))
         account.sudo().write({
             "access_token": data.get("access_token"),
             "refresh_token": data.get("refresh_token"),
-            "token_expires_in": data.get("expires_in"),
+            "token_expires_in": expires_in,
+            "token_expiration_date": (
+                    fields.Datetime.now() + timedelta(seconds=expires_in)
+            ),
         })
 
         return data

@@ -4,13 +4,13 @@
     <!-- APP PRINCIPAL -->
     <menuitem id="menu_shopify_app_root"
               name="Api shopify"
-              sequence="1"
+              sequence="0"
               web_icon="prb_connect_to_shopify,static/description/icon.png"/>
 
-    <!-- MENÚ MERCADO LIBRE -->
-    <menuitem id="menu_shopify_root"
-              name="Shopify"
+    <!-- MENÚ SHOPIFY-->
+    <menuitem id="menu_shopify_config"
+              name="Configuración"
               parent="menu_shopify_app_root"
-              sequence="1"/>
+              sequence="20"/>
 
 </odoo>

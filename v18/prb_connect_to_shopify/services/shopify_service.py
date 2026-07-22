@@ -1,4 +1,4 @@
-from odoo import models
+from odoo import models, _
 from odoo.exceptions import UserError
 import requests
 
@@ -85,5 +85,51 @@ class ShopifyService(models.AbstractModel):
             "scopes": data.get("scope"),
             "state": "connected",
         })
+
+        return data
+
+    def graphql(self, account, query, variables=None):
+        account.ensure_one()
+
+        shop = (
+            account.shop
+            .replace("https://", "")
+            .replace("http://", "")
+            .strip("/")
+        )
+
+        url = (
+            f"https://{shop}/admin/api/"
+            f"{self.API_VERSION}/graphql.json"
+        )
+
+        try:
+            response = requests.post(
+                url,
+                headers={
+                    "X-Shopify-Access-Token": account.access_token,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                json={
+                    "query": query,
+                    "variables": variables or {},
+                },
+                timeout=30,
+            )
+
+            response.raise_for_status()
+
+        except requests.RequestException as error:
+            raise UserError(
+                _("Error consultando Shopify:\n%s") % error
+            ) from error
+
+        data = response.json()
+
+        if data.get("errors"):
+            raise UserError(
+                _("Shopify devolvió errores:\n%s") % data["errors"]
+            )
 
         return data

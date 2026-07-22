@@ -7,6 +7,7 @@
         <field name="model">shopify.account</field>
         <field name="arch" type="xml">
             <list>
+
                 <field name="name"/>
                 <field name="shop"/>
                 <field name="state"/>
@@ -37,6 +38,10 @@
 
                 <sheet>
 
+                    <field name="image_1920"
+                           widget="image"
+                           class="oe_avatar"
+                           options="{'preview_image': 'image_1920'}"/>
                     <group>
 
                         <group>
@@ -45,6 +50,7 @@
                             <field name="client_id"/>
                             <field name="client_secret" password="True"/>
                             <field name="redirect_uri"/>
+                            <field name="active"/>
                         </group>
 
                         <group string="OAuth">
@@ -53,7 +59,30 @@
                         </group>
 
                     </group>
+                    <notebook>
+                        <page string="Sincronizaciones">
+                            <group>
+                                <group string="Órdenes Shopify"
+                                       invisible="not active or state != 'connected'">
 
+                                    <group>
+                                        <field name="order_limit"/>
+                                        <field name="last_order_sync" readonly="1"/>
+                                    </group>
+
+                                    <group>
+                                        <button name="action_get_shopify_orders"
+                                                string="Consultar órdenes"
+                                                type="object"
+                                                class="oe_highlight"
+                                                icon="fa-shopping-cart"/>
+                                    </group>
+
+                                </group>
+                            </group>
+
+                        </page>
+                    </notebook>
                 </sheet>
 
             </form>
@@ -71,9 +100,9 @@
 
     <!-- Submenú -->
     <menuitem id="menu_shopify_accounts"
-              name="Cuentas Shopify"
-              parent="prb_connect_to_shopify.menu_shopify_root"
-               action="action_shopify_account"
+              name="Cuentas"
+              parent="prb_connect_to_shopify.menu_shopify_config"
+              action="action_shopify_account"
               sequence="1"/>
 
 </odoo>

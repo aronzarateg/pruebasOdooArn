@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="shopify_account_default" model="shopify.account">
+        <field name="name">API Shopify</field>
+
+        <!-- Dominio de la tienda -->
+        <field name="shop">
+            Dominio de la tienda
+        </field>
+
+        <!-- Credenciales -->
+        <field name="client_id">
+            client_id
+        </field>
+
+        <field name="client_secret">
+            TU_CLIENT_SECRET
+        </field>
+
+        <!-- OAuth -->
+        <field name="redirect_uri">
+            redirect_uri
+        </field>
+
+        <field name="active">True</field>
+        <field name="image_1920" type="base64"
+               file="prb_connect_to_shopify/static/src/img/logo_shopify.png"/>
+        <field name="state">draft</field>
+
+    </record>
+
+</odoo>

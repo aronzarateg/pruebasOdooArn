@@ -250,7 +250,7 @@ class MeliService(models.AbstractModel):
 
         return response_data
 
-    def request(            self,            account,            method,            endpoint,            params=None,            data=None,            retry=True,    ):
+    def request(self, account, method, endpoint, params=None, data=None, retry=True, ):
         account.ensure_one()
 
         # Antes de consumir la API, comprueba la vigencia del token.
@@ -324,8 +324,6 @@ class MeliService(models.AbstractModel):
             self.refresh_token(account)
 
         return account.access_token
-
-    BASE_URL = "https://api.mercadolibre.com"
 
     def get_shipment(self, account, shipping_id):
         if not shipping_id:
@@ -416,6 +414,28 @@ class MeliService(models.AbstractModel):
                     "status": response.status_code,
                     "response": response.text,
                 }
+            )
+
+        return response.json()
+
+    def get_order(self, account, order_id):
+        response = requests.get(
+            "%s/orders/%s" % (self.BASE_URL, order_id),
+            headers={
+                "Authorization": "Bearer %s" % account.access_token,
+                "Accept": "application/json",
+            },
+            timeout=30,
+        )
+
+        if response.status_code >= 400:
+            raise UserError(
+                _(
+                    "Error consultando la orden de Mercado Libre.\n"
+                    "Código: %s\n"
+                    "Respuesta: %s"
+                )
+                % (response.status_code, response.text)
             )
 
         return response.json()

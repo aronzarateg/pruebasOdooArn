@@ -16,36 +16,11 @@ class MeliOrder(models.Model):
     _rec_name = "meli_order_id"
     _order = "date_created desc, id desc"
 
-    account_id = fields.Many2one(
-        "meli.account",
-        string="Cuenta",
-        required=True,
-        ondelete="cascade",
-        index=True,
-    )
-
-    meli_order_id = fields.Char(
-        string="Orden Mercado Libre",
-        required=True,
-        index=True,
-    )
-
-    sale_order_id = fields.Many2one(
-        "sale.order",
-        string="Cotización/Venta",
-        readonly=True,
-        copy=False,
-    )
-
-    sale_order_count = fields.Integer(
-        string="Cantidad de cotizaciones",
-        compute="_compute_sale_order_count",
-    )
-    billing_info_id = fields.Char(
-        string="ID datos de facturación",
-        readonly=True,
-    )
-
+    account_id = fields.Many2one("meli.account", string="Cuenta", required=True, ondelete="cascade", index=True, )
+    meli_order_id = fields.Char(string="Orden Mercado Libre", required=True, index=True, )
+    sale_order_id = fields.Many2one("sale.order", string="Cotización/Venta", readonly=True, copy=False, )
+    sale_order_count = fields.Integer(string="Cantidad de cotizaciones", compute="_compute_sale_order_count", )
+    billing_info_id = fields.Char(string="ID datos de facturación", readonly=True, )
     state = fields.Selection(
         selection=[
             ("draft", "Pendiente"),
@@ -59,60 +34,29 @@ class MeliOrder(models.Model):
         copy=False,
         index=True,
     )
-
-    processing_error = fields.Text(
-        string="Error de procesamiento",
-        readonly=True,
-        copy=False,
-    )
-
-    processing_attempts = fields.Integer(
-        string="Intentos de procesamiento",
-        readonly=True,
-        copy=False,
-        default=0,
-    )
-
+    processing_error = fields.Text(string="Error de procesamiento", readonly=True, copy=False, )
+    processing_attempts = fields.Integer(string="Intentos de procesamiento", readonly=True, copy=False, default=0, )
     status = fields.Char(string="Estado Mercado Libre")
     status_detail = fields.Char(string="Detalle del estado")
-
     buyer_id = fields.Char(string="ID comprador")
     buyer_nickname = fields.Char(string="Comprador")
-
     seller_id = fields.Char(string="ID vendedor")
     seller_nickname = fields.Char(string="Vendedor")
-
     currency_code = fields.Char(string="Moneda")
     total_amount = fields.Float(string="Total")
     paid_amount = fields.Float(string="Monto pagado")
-
     date_created = fields.Datetime(string="Fecha creación")
     date_last_updated = fields.Datetime(string="Fecha actualización")
-
     shipping_id = fields.Char(string="ID envío")
     fulfilled = fields.Boolean(string="Entregada")
-
-    line_ids = fields.One2many(
-        "meli.order.line",
-        "order_id",
-        string="Productos",
-    )
-
-    payment_ids = fields.One2many(
-        "meli.order.payment",
-        "order_id",
-        string="Pagos",
-    )
+    line_ids = fields.One2many("meli.order.line", "order_id", string="Productos", )
+    payment_ids = fields.One2many("meli.order.payment", "order_id", string="Pagos", )
     date_closed = fields.Datetime(string="Fecha cierre")
     expiration_date = fields.Datetime(string="Fecha expiración")
-
     coupon_amount = fields.Float(string="Descuento")
     shipping_cost = fields.Float(string="Costo de envío")
-
     tag_names = fields.Char(string="Etiquetas")
-
     raw_data = fields.Text(string="JSON Original")
-
     _sql_constraints = [
         (
             "meli_order_account_unique",
@@ -243,7 +187,7 @@ class MeliOrder(models.Model):
     def _get_or_create_partner(self):
         self.ensure_one()
 
-        buyer_id = (self.buyer_id or "").strip()
+        buyer_id = str(self.buyer_id or "").strip()
 
         if not buyer_id:
             raise ValidationError(
@@ -258,22 +202,45 @@ class MeliOrder(models.Model):
             .with_company(company)
         )
 
-        partner = Partner.search(
-            [
-                #("meli_buyer_id", "=", buyer_id),
-                ("parent_id", "=", False),
-            ],
-            limit=1,
+        partner_vals = self._prepare_partner_vals()
+
+        _logger.info(
+            "Valores del cliente Mercado Libre %s: %s",
+            self.meli_order_id,
+            partner_vals,
         )
 
-        partner_vals = self._prepare_partner_vals()
-        print("partner_vals:", partner_vals)
-        raise UserError('kdkdkdkdk')
+        document_number = str(partner_vals.get("vat") or "").strip()
+        partner = Partner.browse()
+        print("document_number", document_number)
+        # Primera prioridad: DNI/RUC.
+        if document_number:
+            partner = Partner.search(
+                [
+                    ("vat", "=", document_number),
+                    ("parent_id", "=", False),
+                    ("company_id", "in", [False, company.id]),
+                ],
+                limit=1,
+            )
+
+        # Segunda prioridad: ID comprador de Mercado Libre.
+        '''
+        if not partner:
+            partner = Partner.search(
+                [
+                    ("meli_buyer_id", "=", buyer_id),
+                    ("parent_id", "=", False),
+                    ("company_id", "in", [False, company.id]),
+                ],
+                limit=1,
+            )
+        '''
         if partner:
             vals_to_update = {
                 key: value
                 for key, value in partner_vals.items()
-                if value
+                if value not in [False, None, ""]
             }
 
             partner.write(vals_to_update)
@@ -282,17 +249,19 @@ class MeliOrder(models.Model):
 
         return partner
 
-
-
     def _prepare_partner_vals(self):
         self.ensure_one()
 
         buyer_id = (self.buyer_id or "").strip()
         buyer_nickname = (self.buyer_nickname or "").strip()
+        print("buyer_id", buyer_id)
+        print("buyer_nickname", buyer_nickname)
 
         billing_data = self._get_billing_partner_data()
-        print("billing_datasss:", billing_data)
-        raise UserError('kdkdkdkdk')
+        shipping_data = self._get_shipping_partner_data()
+        print("billing_data", billing_data)
+        print("shipping_data", shipping_data)
+
         full_name = " ".join(
             filter(
                 None,
@@ -302,71 +271,86 @@ class MeliOrder(models.Model):
                 ],
             )
         )
+        print("full_name", full_name)
 
-        street = self._join_address_parts(
-            billing_data.get("street_name"),
-            billing_data.get("street_number"),
-        )
-
+        receiver_name = (shipping_data.get("receiver_name") or "").strip()
+        street = self._build_meli_street(shipping_data)
+        print("receiver_name", receiver_name)
+        print("street", street)
         country = self._find_meli_country(
-            country_code=billing_data.get("country_code"),
+            country_code=shipping_data.get("country_code"),
+            country_name=shipping_data.get("country_name"),
         )
-
+        print("country", country)
         state = self._find_meli_state(
             country=country,
-            state_code=billing_data.get("state_code"),
-            state_name=billing_data.get("state_name"),
+            state_code=shipping_data.get("state_code"),
+            state_name=shipping_data.get("state_name"),
         )
-
+        print("state", state)
         city = self._find_meli_city(
             country=country,
             state=state,
-            city_name=billing_data.get("city_name"),
+            city_name=shipping_data.get("city_name"),
+            municipality_name=shipping_data.get("municipality_name"),
         )
-
+        print("city", city)
         district = self._find_meli_district(
             city=city,
-            neighborhood_name=billing_data.get("neighborhood"),
+            neighborhood_name=shipping_data.get("neighborhood_name"),
+            municipality_name=shipping_data.get("municipality_name"),
         )
+        print("district", district)
+        # Completar jerarquía geográfica desde el distrito.
+        if district:
+            if (not city and "city_id" in district._fields and district.city_id):
+                city = district.city_id
 
-        document_number = (
-                billing_data.get("document_number") or ""
-        ).strip()
+            if (not state and city and "state_id" in city._fields and city.state_id):
+                state = city.state_id
 
+            if (not country and state and state.country_id):
+                country = state.country_id
+
+        document_number = str(billing_data.get("document_number") or "").strip()
+        print("document_number", document_number)
         vals = {
             "name": (
                     full_name
+                    or receiver_name
                     or buyer_nickname
                     or "Comprador Mercado Libre %s" % buyer_id
             ),
-            "meli_buyer_id": buyer_id,
+            # "meli_buyer_id": buyer_id,
             "vat": document_number or False,
+
             "street": street or False,
-            "street2": billing_data.get("comment") or False,
-            "zip": billing_data.get("zip_code") or False,
-            "city": billing_data.get("city_name") or False,
+            "street2": shipping_data.get("comment") or False,
+            "zip": shipping_data.get("zip_code") or False,
+
             "country_id": country.id if country else False,
             "state_id": state.id if state else False,
+
+            "phone": shipping_data.get("receiver_phone") or False,
+
             "customer_rank": 1,
-            "company_type": "person",
+            "company_type": (
+                "company"
+                if len(document_number) == 11
+                else "person"
+            ),
         }
 
+        print("vals", vals)
         Partner = self.env["res.partner"]
 
         if "it_name" in Partner._fields:
             vals["it_name"] = vals["name"]
 
-        if (
-                document_number
-                and "l10n_latam_identification_type_id" in Partner._fields
-        ):
-            identification_type = (
-                self._find_meli_identification_type(
-                    billing_data.get("document_type"),
-                    document_number,
-                )
-            )
-
+        if (document_number and "l10n_latam_identification_type_id" in Partner._fields):
+            identification_type = self._find_meli_identification_type(billing_data.get("document_type"),
+                                                                      document_number, )
+            print("identification_type", identification_type)
             if identification_type:
                 vals["l10n_latam_identification_type_id"] = (
                     identification_type.id
@@ -374,20 +358,41 @@ class MeliOrder(models.Model):
 
         if city and "city_id" in Partner._fields:
             vals["city_id"] = city.id
-            vals.pop("city", None)
+        else:
+            vals["city"] = (
+                    shipping_data.get("city_name")
+                    or shipping_data.get("municipality_name")
+                    or False
+            )
 
         if district and "l10n_pe_district" in Partner._fields:
             vals["l10n_pe_district"] = district.id
+        print("vals", vals)
 
         return vals
 
     def _get_billing_partner_data(self):
         self.ensure_one()
-        print("billing_partner_data",self.billing_info_id)
-        if not self.billing_info_id:
-            return {}
 
-        response = self.env["meli.service"].get_billing_info(
+        service = self.env["meli.service"]
+
+        # Si aún no tengo billing_info_id, consultar la orden
+        if not self.billing_info_id:
+            order = service.get_order(account=self.account_id, order_id=self.meli_order_id, )
+            print("order:", order)
+            billing_info = (
+                    order.get("billing_info")
+                    or order.get("buyer", {}).get("billing_info")
+                    or {}
+            )
+
+            if not billing_info.get("id"):
+                return {}
+
+            self.billing_info_id = billing_info["id"]
+
+        # Consultar datos de facturación
+        response = service.get_billing_info(
             account=self.account_id,
             site_id=self.account_id.site_id or "MPE",
             billing_info_id=self.billing_info_id,
@@ -399,6 +404,7 @@ class MeliOrder(models.Model):
         address = billing_data.get("address") or {}
         state = address.get("state") or {}
 
+        print("response:", response)
         return {
             "name": billing_data.get("name"),
             "last_name": billing_data.get("last_name"),
@@ -438,13 +444,21 @@ class MeliOrder(models.Model):
     def _get_shipping_partner_data(self):
         self.ensure_one()
 
+        if not self.shipping_id:
+            return {}
+
         shipment_data = self.env["meli.service"].get_shipment(
             account=self.account_id,
             shipping_id=self.shipping_id,
         )
 
         destination = shipment_data.get("destination") or {}
-        address = destination.get("shipping_address") or {}
+
+        address = (
+                shipment_data.get("receiver_address")
+                or destination.get("shipping_address")
+                or {}
+        )
 
         country_data = address.get("country") or {}
         state_data = address.get("state") or {}
@@ -453,8 +467,14 @@ class MeliOrder(models.Model):
         municipality_data = address.get("municipality") or {}
 
         return {
-            "receiver_name": destination.get("receiver_name"),
-            "receiver_phone": destination.get("receiver_phone"),
+            "receiver_name": (
+                    address.get("receiver_name")
+                    or destination.get("receiver_name")
+            ),
+            "receiver_phone": (
+                    address.get("receiver_phone")
+                    or destination.get("receiver_phone")
+            ),
 
             "address_line": address.get("address_line"),
             "street_name": address.get("street_name"),
@@ -462,20 +482,45 @@ class MeliOrder(models.Model):
             "comment": address.get("comment"),
             "zip_code": address.get("zip_code"),
 
-            "country_code": country_data.get("id"),
-            "country_name": country_data.get("name"),
+            "country_code": (
+                    country_data.get("id")
+                    or address.get("country_id")
+            ),
+            "country_name": (
+                    country_data.get("name")
+                    or address.get("country_name")
+            ),
 
-            "state_code": state_data.get("id"),
-            "state_name": state_data.get("name"),
+            "state_code": (
+                    state_data.get("id")
+                    or state_data.get("code")
+                    or address.get("state_id")
+            ),
+            "state_name": (
+                    state_data.get("name")
+                    or address.get("state_name")
+            ),
 
-            "city_code": city_data.get("id"),
-            "city_name": city_data.get("name"),
+            "city_code": (
+                    city_data.get("id")
+                    or address.get("city_id")
+            ),
+            "city_name": (
+                    city_data.get("name")
+                    or address.get("city_name")
+            ),
 
             "neighborhood_code": neighborhood_data.get("id"),
-            "neighborhood_name": neighborhood_data.get("name"),
+            "neighborhood_name": (
+                    neighborhood_data.get("name")
+                    or address.get("neighborhood")
+            ),
 
             "municipality_code": municipality_data.get("id"),
-            "municipality_name": municipality_data.get("name"),
+            "municipality_name": (
+                    municipality_data.get("name")
+                    or address.get("municipality")
+            ),
 
             "latitude": address.get("latitude"),
             "longitude": address.get("longitude"),
@@ -603,12 +648,7 @@ class MeliOrder(models.Model):
 
         return city
 
-    def _find_meli_district(
-            self,
-            city=False,
-            neighborhood_name=False,
-            municipality_name=False,
-    ):
+    def _find_meli_district(self, city=False, neighborhood_name=False, municipality_name=False, city_name=False, ):
         if "l10n_pe.res.city.district" not in self.env:
             return False
 
@@ -617,20 +657,17 @@ class MeliOrder(models.Model):
         ].sudo()
 
         possible_names = [
-            (neighborhood_name or "").strip(),
-            (municipality_name or "").strip(),
+            self._get_location_name(neighborhood_name),
+            self._get_location_name(municipality_name),
+            self._get_location_name(city_name),
         ]
 
-        possible_names = [
-            name
-            for name in possible_names
-            if name
-        ]
+        possible_names = list(dict.fromkeys(
+            name for name in possible_names if name
+        ))
 
         for district_name in possible_names:
-            domain = [
-                ("name", "=ilike", district_name),
-            ]
+            domain = [("name", "=ilike", district_name), ]
 
             if city and "city_id" in District._fields:
                 domain.append(("city_id", "=", city.id))
@@ -640,30 +677,32 @@ class MeliOrder(models.Model):
             if district:
                 return district
 
-        # Fallback menos preciso, solo por nombre.
+        # Fallback sin ciudad
         for district_name in possible_names:
-            district = District.search(
-                [("name", "=ilike", district_name)],
-                limit=1,
-            )
+            district = District.search([("name", "=ilike", district_name)], limit=1, )
 
             if district:
                 return district
 
         return District
 
+    def _get_location_name(self, value):
+        if not value:
+            return ""
+
+        if isinstance(value, dict):
+            value = value.get("name") or ""
+
+        return str(value).strip()
+
     def _create_sale_order_from_meli(self):
         self.ensure_one()
 
         if self.sale_order_id:
-            raise UserError(
-                _("La orden Mercado Libre ya tiene una cotización relacionada.")
-            )
+            raise UserError(_("La orden Mercado Libre ya tiene una cotización relacionada."))
 
         if not self.line_ids:
-            raise ValidationError(
-                _("La orden Mercado Libre no tiene productos.")
-            )
+            raise ValidationError(_("La orden Mercado Libre no tiene productos."))
 
         partner = self._get_or_create_partner()
         sale_order_lines = self._prepare_sale_order_lines()
@@ -764,21 +803,19 @@ class MeliOrder(models.Model):
         self.ensure_one()
 
         group = self.env.ref(
-            "api_mercado_libre.group_meli_api_administrator",
+            "prb_connect_to_mercado_libre.group_meli_api_administrator",
             raise_if_not_found=False,
         )
-
+        print("group", group)
         if not group:
             raise UserError(
                 _("No existe el grupo Administrador API Mercado Libre.")
             )
 
-        users = group.users.filtered(
-            lambda user:
-            user.active
-            and not user.share
-            and company in user.company_ids
-        )
+        # users = group.users.filtered(lambda user: user.active and not user.share and company in user.company_ids)
+        # users = group.users.filtered(lambda user: user.active and not user.share and company in user.company_ids)
+        users = group.users.filtered(lambda user: user.active and not user.share and user.company_id == company)
+        # print("users", users)
 
         if not users:
             raise UserError(

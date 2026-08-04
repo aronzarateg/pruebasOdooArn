@@ -4,13 +4,9 @@
         <field name="name">meli.order.list</field>
         <field name="model">meli.order</field>
         <field name="arch" type="xml">
-            <list
-                    string="Órdenes Mercado Libre"
-                    create="0"
-                    decoration-success="status == 'paid'"
-                    decoration-danger="status == 'cancelled'"
-            >
+            <list string="Órdenes Mercado Libre">
                 <field name="meli_order_id"/>
+                <field name="sale_order_id"/>
                 <field name="date_created"/>
                 <field name="status"/>
                 <field name="buyer_nickname"/>
@@ -19,6 +15,15 @@
                 <field name="paid_amount"/>
                 <field name="fulfilled"/>
                 <field name="account_id"/>
+                <field name="state"
+                       widget="badge"
+                       optional="show"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'sale_created'"
+                       decoration-danger="state == 'error'"
+                       decoration-muted="state == 'cancelled'"/>
+
+
             </list>
         </field>
     </record>
@@ -75,6 +80,8 @@
                             <field name="status_detail" readonly="1"/>
                             <field name="fulfilled" readonly="1"/>
                             <field name="shipping_id" readonly="1"/>
+
+
                         </group>
 
                         <group string="Fechas">

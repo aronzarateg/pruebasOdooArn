@@ -160,9 +160,9 @@ class MeliAccount(models.Model):
 
     # CRONS
     def cron_refresh_tokens(self):
-        renewal_limit = (
-                fields.Datetime.now() + timedelta(minutes=90)
-        )
+        now = fields.Datetime.now()
+        renewal_limit = now + timedelta(minutes=90)
+
         accounts = self.sudo().search([
             ("active", "=", True),
             ("refresh_token", "!=", False),
@@ -170,18 +170,35 @@ class MeliAccount(models.Model):
             ("token_expiration_date", "=", False),
             ("token_expiration_date", "<=", renewal_limit),
         ])
-        print("accounts", accounts)
-        service = self.env["meli.service"]
+
+        _logger.info(
+            "Mercado Libre: %s cuenta(s) requieren renovar el token. "
+            "Fecha actual: %s. Límite de renovación: %s",
+            len(accounts),
+            now,
+            renewal_limit,
+        )
+
+        service = self.env["meli.service"].sudo()
+
         for account in accounts:
             try:
                 with self.env.cr.savepoint():
                     service.refresh_token(account)
+
+                _logger.info(
+                    "Token Mercado Libre renovado correctamente. "
+                    "Cuenta: %s. Próximo vencimiento: %s",
+                    account.display_name,
+                    account.token_expiration_date,
+                )
+
             except Exception:
                 _logger.exception(
-                    "Error renovando token de Mercado Libre "
-                    "para la cuenta %s",
+                    "Error renovando token de Mercado Libre para la cuenta %s",
                     account.display_name,
                 )
+
         return True
 
     '''

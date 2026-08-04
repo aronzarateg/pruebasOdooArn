@@ -22,28 +22,15 @@ class MeliAccount(models.Model):
     client_secret = fields.Char(required=True, string="Client Secret", help="Client Secret")
     redirect_uri = fields.Char(required=True, string="Redirect URIs", help="Redirect URI")
 
-    access_token = fields.Char(readonly=True)
-    refresh_token = fields.Char(readonly=True)
-    token_type = fields.Char(
-        string="Tipo de token",
-        readonly=True,
-        copy=False,
-    )
-    token_scope = fields.Text(
-        string="Alcances del token",
-        readonly=True,
-        copy=False,
-    )
-    meli_user_id = fields.Char(readonly=True)
-    token_expires_in = fields.Integer(readonly=True)
-    token_expiration_date = fields.Datetime(string="Fecha de expiración del token", readonly=True, )
-    token_last_update = fields.Datetime(string="Última actualización del token", readonly=True, copy=False, )
-    token_response = fields.Json(
-        string="Respuesta OAuth",
-        readonly=True,
-        copy=False,
-        groups="base.group_system",
-    )
+    access_token = fields.Char(string="access token")
+    refresh_token = fields.Char(string="refresh token")
+    token_type = fields.Char(string="Tipo de token")
+    token_scope = fields.Text(string="Alcances del token")
+    meli_user_id = fields.Char(string="Usuario mercado libre")
+    token_expires_in = fields.Integer(string="Expiración token")
+    token_expiration_date = fields.Datetime(string="Fecha de expiración del token")
+    token_last_update = fields.Datetime(string="Última actualización del token")
+    token_response = fields.Json(string="Respuesta OAuth")
     site_id = fields.Selection([
         ("MPE", "Perú"),
         ("MLA", "Argentina"),
@@ -52,11 +39,7 @@ class MeliAccount(models.Model):
         ("MCO", "Colombia"),
         ("MLM", "México"),
     ], string="Site MELI", default="MPE", required=True)
-    last_order_sync = fields.Datetime(
-        string="Última sincronización de órdenes",
-        readonly=True,
-        copy=False,
-    )
+    last_order_sync = fields.Datetime(string="Última sincronización de órdenes")
 
     def _check_active_account(self):
         self.ensure_one()

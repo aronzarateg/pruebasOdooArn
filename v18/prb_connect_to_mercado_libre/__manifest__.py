@@ -13,6 +13,7 @@
     "depends": ["base", "sale", "stock", "product"],
     "data": [
         "security/ir.model.access.csv",
+        "security/melo_groups.xml",
         "data/cron.xml",
         "data/meli_account_data.xml",
 

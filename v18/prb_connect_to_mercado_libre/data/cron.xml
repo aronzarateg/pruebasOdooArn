@@ -30,6 +30,21 @@
         <field name="interval_type">days</field>
         <field name="active">True</field>
     </record>
+    <record id="ir_cron_create_meli_sale_orders" model="ir.cron">
+        <field name="name">
+            Mercado Libre: Crear cotizaciones pendientes
+        </field>
+
+        <field name="model_id" ref="model_meli_order"/>
+        <field name="state">code</field>
+        <field name="code">
+            model._cron_create_sale_orders(limit=50)
+        </field>
+
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
 
 
 </odoo>

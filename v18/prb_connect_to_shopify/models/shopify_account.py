@@ -1,8 +1,13 @@
+#from urllib.parse import urlencode
+
+import logging
+from datetime import timedelta
 from urllib.parse import urlencode
 
-from odoo import _, models, fields
+from odoo import api, _, fields, models
 from odoo.exceptions import UserError
-import logging
+
+
 _logger = logging.getLogger(__name__)
 
 class ShopifyAccount(models.Model):
@@ -26,13 +31,60 @@ class ShopifyAccount(models.Model):
     client_secret = fields.Char(required=True)
     redirect_uri = fields.Char(required=True)
 
-    access_token = fields.Char(readonly=True)
-    scopes = fields.Char(readonly=True)
+    access_token = fields.Char(
+        string="Access Token",
+        readonly=True,
+        copy=False,
+    )
+    refresh_token = fields.Char(
+        string="Refresh Token",
+        readonly=True,
+        copy=False,
+    )
+    scopes = fields.Char(
+        string="Scopes autorizados",
+        readonly=True,
+        copy=False,
+    )
 
-    state = fields.Selection([
-        ("draft", "No conectado"),
-        ("connected", "Conectado"),
-    ], default="draft", readonly=True)
+    token_expires_in = fields.Integer(
+        string="Duración Access Token",
+        readonly=True,
+        copy=False,
+    )
+    token_expiration_date = fields.Datetime(
+        string="Expiración Access Token",
+        readonly=True,
+        copy=False,
+    )
+    refresh_token_expiration_date = fields.Datetime(
+        string="Expiración Refresh Token",
+        readonly=True,
+        copy=False,
+    )
+    last_token_refresh = fields.Datetime(
+        string="Última renovación",
+        readonly=True,
+        copy=False,
+    )
+    token_error = fields.Text(
+        string="Último error de token",
+        readonly=True,
+        copy=False,
+    )
+
+    state = fields.Selection(
+        [
+            ("draft", "No conectado"),
+            ("connected", "Conectado"),
+            ("reconnect", "Requiere reconexión"),
+            ("error", "Error"),
+        ],
+        default="draft",
+        readonly=True,
+        copy=False,
+    )
+
     order_limit = fields.Integer(
         string="Límite de órdenes",
         default=50,
@@ -43,6 +95,30 @@ class ShopifyAccount(models.Model):
         readonly=True,
     )
 
+    def _get_shop_domain(self):
+        self.ensure_one()
+
+        shop = (
+            (self.shop or "")
+            .replace("https://", "")
+            .replace("http://", "")
+            .strip("/")
+            .lower()
+        )
+
+        if not shop:
+            raise UserError(_("Debe configurar el dominio Shopify."))
+
+        if not shop.endswith(".myshopify.com"):
+            raise UserError(
+                _(
+                    "Debe utilizar el dominio permanente de Shopify.\n"
+                    "Ejemplo: tienda.myshopify.com"
+                )
+            )
+
+        return shop
+
     def action_connect_shopify(self):
         self.ensure_one()
 
@@ -50,13 +126,6 @@ class ShopifyAccount(models.Model):
             raise UserError(
                 _("La cuenta Shopify está inactiva. Actívela antes de conectarla.")
             )
-
-        shop = (
-            self.shop
-            .replace("https://", "")
-            .replace("http://", "")
-            .strip("/")
-        )
 
         params = {
             "client_id": self.client_id,
@@ -72,7 +141,7 @@ class ShopifyAccount(models.Model):
         }
 
         url = "https://%s/admin/oauth/authorize?%s" % (
-            shop,
+            self._get_shop_domain(),
             urlencode(params),
         )
 
@@ -258,3 +327,39 @@ class ShopifyAccount(models.Model):
                 "sticky": False,
             },
         }
+
+    @api.model
+    def cron_refresh_tokens(self):
+        renewal_limit = (
+                fields.Datetime.now() + timedelta(minutes=20)
+        )
+
+        accounts = self.sudo().search([
+            ("active", "=", True),
+            ("state", "=", "connected"),
+            ("refresh_token", "!=", False),
+            "|",
+            ("token_expiration_date", "=", False),
+            ("token_expiration_date", "<=", renewal_limit),
+        ])
+
+        service = self.env["shopify.service"]
+
+        for account in accounts:
+            try:
+                with self.env.cr.savepoint():
+                    service.refresh_token(account)
+
+            except Exception as error:
+                _logger.exception(
+                    "Error renovando el token Shopify para la cuenta %s",
+                    account.display_name,
+                )
+
+                if account.state != "reconnect":
+                    account.sudo().write({
+                        "state": "error",
+                        "token_error": str(error),
+                    })
+
+        return True

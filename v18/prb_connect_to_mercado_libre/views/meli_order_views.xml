@@ -4,11 +4,20 @@
         <field name="name">meli.order.list</field>
         <field name="model">meli.order</field>
         <field name="arch" type="xml">
-            <list>
+            <list
+                    string="Órdenes Mercado Libre"
+                    create="0"
+                    decoration-success="status == 'paid'"
+                    decoration-danger="status == 'cancelled'"
+            >
                 <field name="meli_order_id"/>
+                <field name="date_created"/>
                 <field name="status"/>
                 <field name="buyer_nickname"/>
+                <field name="currency_code"/>
                 <field name="total_amount"/>
+                <field name="paid_amount"/>
+                <field name="fulfilled"/>
                 <field name="account_id"/>
             </list>
         </field>
@@ -18,20 +27,185 @@
         <field name="name">meli.order.form</field>
         <field name="model">meli.order</field>
         <field name="arch" type="xml">
-            <form>
+            <form string="Orden Mercado Libre" create="0">
+                <header>
+                    <button
+                            name="action_create_sale_order"
+                            string="Crear cotización"
+                            type="object"
+                            class="oe_highlight"
+                            icon="fa-shopping-cart"
+                            invisible="sale_order_id or status != 'paid' or state == 'cancelled'"
+                            groups="prb_connect_to_mercado_libre.group_meli_api_administrator"
+                    />
+
+                    <field
+                            name="state"
+                            widget="statusbar"
+                            statusbar_visible="draft,sale_created,error,cancelled"
+                    />
+                </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button
+                                name="action_view_sale_order"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-shopping-cart"
+                                invisible="not sale_order_id"
+                        >
+                            <field
+                                    name="sale_order_count"
+                                    widget="statinfo"
+                                    string="Cotización"
+                            />
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="meli_order_id"/>
+                        <h1>
+                            <field name="meli_order_id" readonly="1"/>
+                        </h1>
+                    </div>
+
                     <group>
-                        <field name="account_id"/>
-                        <field name="meli_order_id"/>
-                        <field name="status"/>
-                        <field name="buyer_nickname"/>
-                        <field name="total_amount"/>
+                        <group string="Orden">
+                            <field name="account_id" readonly="1"/>
+                            <field name="status" readonly="1"/>
+                            <field name="status_detail" readonly="1"/>
+                            <field name="fulfilled" readonly="1"/>
+                            <field name="shipping_id" readonly="1"/>
+                        </group>
+
+                        <group string="Fechas">
+                            <field name="date_created" readonly="1"/>
+                            <field name="date_closed" readonly="1"/>
+                            <field name="date_last_updated" readonly="1"/>
+                            <field name="expiration_date" readonly="1"/>
+                        </group>
                     </group>
+
                     <group>
-                        <field name="raw_data"/>
+                        <group string="Comprador">
+                            <field name="buyer_id" readonly="1"/>
+                            <field name="buyer_nickname" readonly="1"/>
+                        </group>
+
+                        <group string="Vendedor">
+                            <field name="seller_id" readonly="1"/>
+                            <field name="seller_nickname" readonly="1"/>
+                        </group>
                     </group>
+
+                    <group>
+                        <group string="Importes">
+                            <field name="currency_code" readonly="1"/>
+                            <field name="total_amount" readonly="1"/>
+                            <field name="paid_amount" readonly="1"/>
+                            <field name="coupon_amount" readonly="1"/>
+                            <field name="shipping_cost" readonly="1"/>
+                        </group>
+
+                        <group string="Información adicional">
+                            <field name="tag_names" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Productos">
+                            <field name="line_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="item_id"/>
+                                    <field name="seller_sku"/>
+                                    <field name="title"/>
+                                    <field name="variation_description"/>
+                                    <field name="quantity"/>
+                                    <field name="unit_price"/>
+                                    <field name="gross_price"/>
+                                    <field name="sale_fee"/>
+                                    <field name="currency_code"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Pagos">
+                            <field name="payment_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="payment_id"/>
+                                    <field name="status"/>
+                                    <field name="payment_method_id"/>
+                                    <field name="payment_type"/>
+                                    <field name="transaction_amount"/>
+                                    <field name="total_paid_amount"/>
+                                    <field name="coupon_amount"/>
+                                    <field name="installments"/>
+                                    <field name="date_approved"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="JSON original">
+                            <field
+                                    name="raw_data"
+                                    nolabel="1"
+                                    readonly="1"
+                            />
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
+        </field>
+    </record>
+
+    <record id="view_meli_order_search" model="ir.ui.view">
+        <field name="name">meli.order.search</field>
+        <field name="model">meli.order</field>
+        <field name="arch" type="xml">
+            <search string="Buscar órdenes Mercado Libre">
+                <field name="meli_order_id"/>
+                <field name="buyer_nickname"/>
+                <field name="buyer_id"/>
+                <field name="shipping_id"/>
+                <field name="account_id"/>
+
+                <filter
+                        name="filter_paid"
+                        string="Pagadas"
+                        domain="[('status', '=', 'paid')]"
+                />
+
+                <filter
+                        name="filter_fulfilled"
+                        string="Entregadas"
+                        domain="[('fulfilled', '=', True)]"
+                />
+
+                <filter
+                        name="filter_date_created"
+                        string="Fecha de creación"
+                        date="date_created"
+                />
+
+                <group expand="0" string="Agrupar por">
+                    <filter
+                            name="group_by_account"
+                            string="Cuenta"
+                            context="{'group_by': 'account_id'}"
+                    />
+
+                    <filter
+                            name="group_by_status"
+                            string="Estado"
+                            context="{'group_by': 'status'}"
+                    />
+
+                    <filter
+                            name="group_by_date"
+                            string="Fecha"
+                            context="{'group_by': 'date_created:day'}"
+                    />
+                </group>
+            </search>
         </field>
     </record>
 
@@ -39,6 +213,7 @@
         <field name="name">Órdenes Mercado Libre</field>
         <field name="res_model">meli.order</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_meli_order_search"/>
     </record>
 
     <menuitem id="menu_meli_order"

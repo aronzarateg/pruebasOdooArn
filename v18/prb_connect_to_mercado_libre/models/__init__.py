@@ -1,5 +1,6 @@
 from . import meli_account
 from . import meli_order
+from . import meli_order_payment
 #from . import meli_product
 #from . import meli_notification
 #from . import product_template

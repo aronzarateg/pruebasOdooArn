@@ -89,9 +89,7 @@ class MeliAccount(models.Model):
         }
 
     def action_sync_orders(self):
-        """
-        Método ejecutado manualmente desde el botón.
-        """
+
         self.ensure_one()
         self._check_active_account()
 
@@ -114,18 +112,6 @@ class MeliAccount(models.Model):
         }
 
     def _sync_orders(self, date_from=None, date_to=None):
-        """
-        Método reutilizable.
-
-        Puede llamarse desde:
-        - Botón
-        - Cron
-        - Otro método
-        - Shell de Odoo
-
-        :param date_from: Fecha inicial opcional.
-        :param date_to: Fecha final opcional.
-        """
         self.ensure_one()
         self._check_active_account()
 
@@ -158,26 +144,29 @@ class MeliAccount(models.Model):
 
     # CRONS
     def cron_refresh_tokens(self):
-        renewal_limit = fields.Datetime.now() + timedelta(minutes=30)
-
-        accounts = self.search([
+        renewal_limit = (
+                fields.Datetime.now() + timedelta(minutes=90)
+        )
+        accounts = self.sudo().search([
             ("active", "=", True),
             ("refresh_token", "!=", False),
             "|",
             ("token_expiration_date", "=", False),
             ("token_expiration_date", "<=", renewal_limit),
         ])
-
+        print("accounts", accounts)
         service = self.env["meli.service"]
-
         for account in accounts:
             try:
-                service.refresh_token(account)
+                with self.env.cr.savepoint():
+                    service.refresh_token(account)
             except Exception:
                 _logger.exception(
-                    "Error renovando token de Mercado Libre para la cuenta %s",
+                    "Error renovando token de Mercado Libre "
+                    "para la cuenta %s",
                     account.display_name,
                 )
+        return True
 
     '''
     def action_sync_items(self):

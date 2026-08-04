@@ -1,7 +1,8 @@
 from odoo import http
 from odoo.http import request
 import json
-
+import logging
+_logger = logging.getLogger(__name__)
 
 class MercadoLibreController(http.Controller):
 
@@ -33,18 +34,54 @@ class MercadoLibreController(http.Controller):
         <p>Ya puedes cerrar esta ventana y volver a Odoo.</p>
         """
 
-    @http.route("/mercadolibre_v2/notifications", auth="public", type="json", methods=["POST"], csrf=False)
+    @http.route("/mercadolibre_v2/notifications", auth="public", type="http", methods=["POST"], csrf=False, )
     def meli_notifications(self, **kw):
-        data = request.jsonrequest or {}
+        try:
+            raw_body = request.httprequest.get_data()
+            data = json.loads(raw_body.decode("utf-8") or "{}")
 
-        request.env["meli.notification"].sudo().create({
-            "topic": data.get("topic"),
-            "resource": data.get("resource"),
-            "user_id": str(data.get("user_id") or ""),
-            "application_id": str(data.get("application_id") or ""),
-            "attempts": data.get("attempts") or 0,
-            "sent": data.get("sent"),
-            "payload": json.dumps(data),
-        })
+            topic = data.get("topic")
+            resource = data.get("resource")
+            user_id = str(data.get("user_id") or "")
+            application_id = str(data.get("application_id") or "")
 
-        return {"status": "ok"}
+            if not topic or not resource or not user_id:
+                return request.make_json_response(
+                    {
+                        "status": "error",
+                        "message": "Notificación incompleta",
+                    },
+                    status=400,
+                )
+
+            request.env["meli.notification"].sudo().create({
+                "topic": topic,
+                "resource": resource,
+                "user_id": user_id,
+                "application_id": application_id,
+                "delivery_attempts": int(data.get("attempts") or 0),
+                "sent": data.get("sent") or False,
+                "payload": json.dumps(
+                    data,
+                    ensure_ascii=False,
+                    default=str,
+                ),
+            })
+
+            return request.make_json_response(
+                {"status": "ok"},
+                status=200,
+            )
+
+        except Exception:
+            _logger.exception(
+                "Error registrando notificación de Mercado Libre"
+            )
+
+            return request.make_json_response(
+                {
+                    "status": "error",
+                    "message": "No se pudo registrar la notificación",
+                },
+                status=500,
+            )

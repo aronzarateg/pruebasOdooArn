@@ -5,6 +5,12 @@ import requests
 
 from odoo import http
 from odoo.http import request
+import base64
+import hashlib
+import hmac
+import json
+import logging
+
 
 _logger = logging.getLogger(__name__)
 
@@ -173,4 +179,150 @@ class ShopifyController(http.Controller):
             </html>
             """ % shop,
             headers=[("Content-Type", "text/html; charset=utf-8")],
+        )
+
+    @http.route(
+        "/shopify/webhooks",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        csrf=False,
+    )
+    def shopify_webhook(self, **kwargs):
+        raw_body = request.httprequest.get_data()
+
+        shop_domain = (
+                request.httprequest.headers.get("X-Shopify-Shop-Domain")
+                or ""
+        ).strip().lower()
+
+        received_hmac = (
+                request.httprequest.headers.get("X-Shopify-Hmac-Sha256")
+                or ""
+        )
+
+        webhook_id = (
+                request.httprequest.headers.get("X-Shopify-Webhook-Id")
+                or ""
+        )
+
+        topic = (
+                request.httprequest.headers.get("X-Shopify-Topic")
+                or ""
+        )
+
+        api_version = (
+                request.httprequest.headers.get("X-Shopify-Api-Version")
+                or ""
+        )
+
+        account = request.env["shopify.account"].sudo().search([
+            ("active", "=", True),
+            ("shop", "=", shop_domain),
+        ], limit=1)
+
+        if not account:
+            _logger.warning(
+                "Webhook Shopify recibido para tienda no configurada: %s",
+                shop_domain,
+            )
+            return request.make_json_response(
+                {"status": "shop_not_found"},
+                status=404,
+            )
+
+        if not self._verify_shopify_hmac(
+                account.client_secret,
+                raw_body,
+                received_hmac,
+        ):
+            _logger.warning(
+                "Firma Shopify inválida para la tienda %s",
+                shop_domain,
+            )
+            return request.make_json_response(
+                {"status": "invalid_signature"},
+                status=401,
+            )
+
+        # Evita procesar entregas duplicadas.
+        if webhook_id:
+            existing = request.env[
+                "shopify.notification"
+            ].sudo().search([
+                ("webhook_id", "=", webhook_id),
+            ], limit=1)
+
+            if existing:
+                return request.make_json_response(
+                    {
+                        "status": "ok",
+                        "duplicate": True,
+                    },
+                    status=200,
+                )
+
+        try:
+            payload = json.loads(
+                raw_body.decode("utf-8") or "{}"
+            )
+        except (UnicodeDecodeError, ValueError):
+            _logger.exception(
+                "Payload Shopify inválido para la tienda %s",
+                shop_domain,
+            )
+            return request.make_json_response(
+                {"status": "invalid_payload"},
+                status=400,
+            )
+
+        try:
+            request.env["shopify.notification"].sudo().create({
+                "account_id": account.id,
+                "webhook_id": webhook_id or False,
+                "topic": topic,
+                "shop_domain": shop_domain,
+                "api_version": api_version,
+                "payload": json.dumps(
+                    payload,
+                    ensure_ascii=False,
+                    default=str,
+                ),
+                "state": "pending",
+            })
+        except Exception:
+            _logger.exception(
+                "Error registrando webhook Shopify: %s",
+                webhook_id,
+            )
+            return request.make_json_response(
+                {"status": "error"},
+                status=500,
+            )
+
+        return request.make_json_response(
+            {"status": "ok"},
+            status=200,
+        )
+
+    @staticmethod
+    def _verify_shopify_hmac(
+            client_secret,
+            raw_body,
+            received_hmac,
+    ):
+        if not client_secret or not received_hmac:
+            return False
+
+        expected_hmac = base64.b64encode(
+            hmac.new(
+                client_secret.encode("utf-8"),
+                raw_body,
+                hashlib.sha256,
+            ).digest()
+        ).decode("utf-8")
+
+        return hmac.compare_digest(
+            expected_hmac,
+            received_hmac,
         )

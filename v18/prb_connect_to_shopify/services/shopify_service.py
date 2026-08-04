@@ -500,3 +500,286 @@ class ShopifyService(models.AbstractModel):
             raise UserError(
                 _("Error consultando Shopify:\n%s") % error
             ) from error
+
+
+
+    def register_webhook(self, account, topic, callback_url):
+        account.ensure_one()
+
+        query = """
+            mutation webhookSubscriptionCreate(
+                $topic: WebhookSubscriptionTopic!,
+                $webhookSubscription: WebhookSubscriptionInput!
+            ) {
+                webhookSubscriptionCreate(
+                    topic: $topic,
+                    webhookSubscription: $webhookSubscription
+                ) {
+                    webhookSubscription {
+                        id
+                        topic
+                        uri
+                    }
+                    userErrors {
+                        field
+                        message
+                    }
+                }
+            }
+        """
+
+        response = requests.post(
+            "https://%s/admin/api/%s/graphql.json" % (
+                account._get_shop_domain(),
+                self.API_VERSION,
+            ),
+            headers={
+                "X-Shopify-Access-Token": account.access_token,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json={
+                "query": query,
+                "variables": {
+                    "topic": topic,
+                    "webhookSubscription": {
+                        "uri": callback_url,
+                        "format": "JSON",
+                    },
+                },
+            },
+            timeout=30,
+        )
+
+        try:
+            data = response.json()
+        except ValueError:
+            data = {}
+
+        if response.status_code >= 400:
+            raise UserError(
+                _(
+                    "Error HTTP registrando webhook Shopify.\n"
+                    "Código: %(status)s\n"
+                    "Respuesta: %(response)s"
+                ) % {
+                    "status": response.status_code,
+                    "response": data or response.text,
+                }
+            )
+
+        if data.get("errors"):
+            raise UserError(
+                _("Error GraphQL registrando webhook:\n%s")
+                % data["errors"]
+            )
+
+        result = (
+            data.get("data", {})
+            .get("webhookSubscriptionCreate", {})
+        )
+
+        user_errors = result.get("userErrors") or []
+
+        if user_errors:
+            raise UserError(
+                _("Shopify rechazó el webhook:\n%s")
+                % "\n".join(
+                    error.get("message") or str(error)
+                    for error in user_errors
+                )
+            )
+
+        return result.get("webhookSubscription")
+
+    def action_register_webhooks(self):
+        self.ensure_one()
+
+        if not self.access_token:
+            raise UserError(
+                _("Primero debe conectar la cuenta Shopify.")
+            )
+
+        base_url = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("web.base.url")
+            .rstrip("/")
+        )
+
+        callback_url = "%s/shopify/webhooks" % base_url
+
+        topics = [
+            "ORDERS_CREATE",
+            "ORDERS_UPDATED",
+            "ORDERS_PAID",
+            "ORDERS_CANCELLED",
+            "FULFILLMENTS_CREATE",
+            "FULFILLMENTS_UPDATE",
+            "INVENTORY_LEVELS_UPDATE",
+            "PRODUCTS_UPDATE",
+            "APP_UNINSTALLED",
+        ]
+
+        service = self.env["shopify.service"]
+        results = []
+
+        for topic in topics:
+            result = service.register_webhook(
+                self,
+                topic,
+                callback_url,
+            )
+            results.append(result)
+
+        return results
+
+    def list_webhooks(self, account):
+        account.ensure_one()
+
+        query = """
+            query ShopifyWebhookSubscriptions {
+                webhookSubscriptions(first: 100) {
+                    nodes {
+                        id
+                        topic
+                        uri
+                        format
+                    }
+                }
+            }
+        """
+
+        data = self._graphql_request(
+            account,
+            query,
+            variables={},
+        )
+
+        return (
+            data.get("data", {})
+            .get("webhookSubscriptions", {})
+            .get("nodes", [])
+        )
+
+    def update_webhook(
+            self,
+            account,
+            webhook_id,
+            callback_url,
+    ):
+        account.ensure_one()
+
+        if not webhook_id:
+            raise UserError(
+                _("No se recibió el ID del webhook Shopify.")
+            )
+
+        query = """
+            mutation UpdateWebhookSubscription(
+                $id: ID!,
+                $webhookSubscription: WebhookSubscriptionInput!
+            ) {
+                webhookSubscriptionUpdate(
+                    id: $id,
+                    webhookSubscription: $webhookSubscription
+                ) {
+                    webhookSubscription {
+                        id
+                        topic
+                        uri
+                        format
+                    }
+                    userErrors {
+                        field
+                        message
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "id": webhook_id,
+            "webhookSubscription": {
+                "uri": callback_url,
+                "format": "JSON",
+            },
+        }
+
+        data = self._graphql_request(
+            account,
+            query,
+            variables,
+        )
+
+        result = (
+            data.get("data", {})
+            .get("webhookSubscriptionUpdate", {})
+        )
+
+        user_errors = result.get("userErrors") or []
+
+        if user_errors:
+            raise UserError(
+                _("Shopify rechazó la actualización:\n%s")
+                % "\n".join(
+                    error.get("message") or str(error)
+                    for error in user_errors
+                )
+            )
+
+        return result.get("webhookSubscription")
+
+    def _graphql_request(
+            self,
+            account,
+            query,
+            variables=None,
+    ):
+        account.ensure_one()
+
+        response = requests.post(
+            "https://%s/admin/api/%s/graphql.json"
+            % (
+                account._get_shop_domain(),
+                self.API_VERSION,
+            ),
+            headers={
+                "X-Shopify-Access-Token": account.access_token,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json={
+                "query": query,
+                "variables": variables or {},
+            },
+            timeout=30,
+        )
+
+        try:
+            data = response.json()
+        except ValueError:
+            data = {}
+
+        if response.status_code >= 400:
+            raise UserError(
+                _(
+                    "Error HTTP consultando Shopify.\n"
+                    "Código: %(status)s\n"
+                    "Respuesta: %(response)s"
+                ) % {
+                    "status": response.status_code,
+                    "response": data or response.text,
+                }
+            )
+
+        if data.get("errors"):
+            raise UserError(
+                _("Error GraphQL Shopify:\n%s")
+                % "\n".join(
+                    error.get("message") or str(error)
+                    for error in data["errors"]
+                )
+            )
+
+        return data

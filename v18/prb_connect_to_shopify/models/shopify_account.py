@@ -1,4 +1,4 @@
-#from urllib.parse import urlencode
+# from urllib.parse import urlencode
 
 import logging
 from datetime import timedelta
@@ -7,8 +7,8 @@ from urllib.parse import urlencode
 from odoo import api, _, fields, models
 from odoo.exceptions import UserError
 
-
 _logger = logging.getLogger(__name__)
+
 
 class ShopifyAccount(models.Model):
     _name = "shopify.account"
@@ -94,6 +94,26 @@ class ShopifyAccount(models.Model):
         string="Última consulta de órdenes",
         readonly=True,
     )
+    webhook_callback_url = fields.Char(
+        string="URL de Webhooks",
+        help=(
+            "URL pública donde Shopify enviará las notificaciones. "
+            "Ejemplo: https://dominio.com/shopify/webhooks"
+        ),
+        copy=False,
+    )
+
+    webhook_last_sync = fields.Datetime(
+        string="Última sincronización de webhooks",
+        readonly=True,
+        copy=False,
+    )
+
+    webhook_sync_message = fields.Text(
+        string="Resultado de sincronización",
+        readonly=True,
+        copy=False,
+    )
 
     def _get_shop_domain(self):
         self.ensure_one()
@@ -133,8 +153,11 @@ class ShopifyAccount(models.Model):
                 "read_customers,write_customers,"
                 "read_fulfillments,write_fulfillments,"
                 "read_inventory,write_inventory,"
+                "read_locations,"
                 "read_orders,write_orders,"
-                "read_products,write_products"
+                "read_products,write_products,"
+                "read_assigned_fulfillment_orders,"
+                "write_assigned_fulfillment_orders"
             ),
             "redirect_uri": self.redirect_uri,
             "state": str(self.id),
@@ -172,8 +195,7 @@ class ShopifyAccount(models.Model):
             },
         }
 
-
-    #obtener ordenes
+    # obtener ordenes
     def _check_shopify_connection(self):
         self.ensure_one()
 
@@ -326,6 +348,110 @@ class ShopifyAccount(models.Model):
                 "type": "success",
                 "sticky": False,
             },
+        }
+
+    def action_sync_webhooks(self):
+        self.ensure_one()
+
+        if not self.access_token:
+            raise UserError(
+                _("Primero debe conectar la cuenta Shopify.")
+            )
+
+        callback_url = (
+                self.webhook_callback_url or ""
+        ).strip().rstrip("/")
+
+        if not callback_url:
+            raise UserError(
+                _("Debe ingresar la URL de webhooks.")
+            )
+
+        if not callback_url.startswith("https://"):
+            raise UserError(
+                _("La URL de webhooks debe utilizar HTTPS.")
+            )
+
+        service = self.env["shopify.service"]
+
+        topics = [
+            "ORDERS_CREATE",
+            "ORDERS_UPDATED",
+            "ORDERS_PAID",
+            "ORDERS_CANCELLED",
+            "FULFILLMENTS_CREATE",
+            "FULFILLMENTS_UPDATE",
+            "INVENTORY_LEVELS_UPDATE",
+            "PRODUCTS_UPDATE",
+            "APP_UNINSTALLED",
+        ]
+
+        existing_webhooks = service.list_webhooks(self)
+
+        existing_by_topic = {}
+
+        for webhook in existing_webhooks:
+            topic = webhook.get("topic")
+
+            if topic:
+                existing_by_topic.setdefault(topic, []).append(webhook)
+
+        created = []
+        updated = []
+        unchanged = []
+
+        for topic in topics:
+            topic_webhooks = existing_by_topic.get(topic, [])
+
+            if not topic_webhooks:
+                webhook = service.register_webhook(
+                    self,
+                    topic,
+                    callback_url,
+                )
+                created.append(topic)
+                continue
+
+            # Se utiliza la primera suscripción del tópico.
+            webhook = topic_webhooks[0]
+
+            current_uri = (
+                    webhook.get("uri") or ""
+            ).strip().rstrip("/")
+
+            if current_uri != callback_url:
+                service.update_webhook(
+                    self,
+                    webhook.get("id"),
+                    callback_url,
+                )
+                updated.append(topic)
+            else:
+                unchanged.append(topic)
+
+        message = (
+                "Webhooks sincronizados.\n"
+                "Creados: %s\n"
+                "Actualizados: %s\n"
+                "Sin cambios: %s"
+                % (
+                    ", ".join(created) or "Ninguno",
+                    ", ".join(updated) or "Ninguno",
+                    ", ".join(unchanged) or "Ninguno",
+                )
+        )
+
+        self.write({
+            "webhook_last_sync": fields.Datetime.now(),
+            "webhook_sync_message": message,
+        })
+
+        return {
+            "effect": {
+                "fadeout": "slow",
+                "message": _("Webhooks sincronizados correctamente."),
+                "type": "rainbow_man",
+            }
         }
 
     @api.model

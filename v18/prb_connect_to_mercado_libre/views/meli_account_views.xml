@@ -45,6 +45,11 @@
                             <field name="access_token" password="True"/>
                             <field name="refresh_token" password="True"/>
                             <field name="token_expires_in"/>
+                            <field name="token_scope"/>
+                            <field name="token_type"/>
+
+                            <field name="token_last_update"/>
+                            <field name="token_response"/>
                         </group>
                     </group>
 

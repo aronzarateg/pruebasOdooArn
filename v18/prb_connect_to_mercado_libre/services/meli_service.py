@@ -80,6 +80,7 @@ class MeliService(models.AbstractModel):
             ) from error
 
     def exchange_code_for_token(self, account, code):
+        print("exchange_code_for_token")
         response = requests.post(
             f"{self.BASE_URL}/oauth/token",
             headers={
@@ -104,18 +105,30 @@ class MeliService(models.AbstractModel):
             )
 
         data = response.json()
+        print("data", data)
         expires_in = int(data.get("expires_in") or 0)
+        now = fields.Datetime.now()
 
-        account.sudo().write({
-            "access_token": data.get("access_token"),
-            "refresh_token": data.get("refresh_token"),
+        vals = {
+            "access_token": data.get("access_token") or False,
+            "token_type": data.get("token_type") or False,
+            "token_scope": data.get("scope") or False,
             "meli_user_id": str(data.get("user_id") or ""),
             "token_expires_in": expires_in,
             "token_expiration_date": (
-                    fields.Datetime.now()
-                    + timedelta(seconds=expires_in)
+                now + timedelta(seconds=expires_in)
+                if expires_in
+                else False
             ),
-        })
+            "token_last_update": now,
+            "token_response": data,
+        }
+
+        # No sobrescribir el refresh_token existente con False.
+        if data.get("refresh_token"):
+            vals["refresh_token"] = data["refresh_token"]
+
+        account.sudo().write(vals)
 
         return data
 

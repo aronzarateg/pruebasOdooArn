@@ -24,9 +24,26 @@ class MeliAccount(models.Model):
 
     access_token = fields.Char(readonly=True)
     refresh_token = fields.Char(readonly=True)
+    token_type = fields.Char(
+        string="Tipo de token",
+        readonly=True,
+        copy=False,
+    )
+    token_scope = fields.Text(
+        string="Alcances del token",
+        readonly=True,
+        copy=False,
+    )
     meli_user_id = fields.Char(readonly=True)
     token_expires_in = fields.Integer(readonly=True)
     token_expiration_date = fields.Datetime(string="Fecha de expiración del token", readonly=True, )
+    token_last_update = fields.Datetime(string="Última actualización del token", readonly=True, copy=False, )
+    token_response = fields.Json(
+        string="Respuesta OAuth",
+        readonly=True,
+        copy=False,
+        groups="base.group_system",
+    )
     site_id = fields.Selection([
         ("MPE", "Perú"),
         ("MLA", "Argentina"),
@@ -120,7 +137,6 @@ class MeliAccount(models.Model):
             date_from=date_from,
             date_to=date_to,
         )
-
 
     def _cron_sync_orders(self):
         accounts = self.search([

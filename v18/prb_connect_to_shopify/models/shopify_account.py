@@ -18,9 +18,7 @@ class ShopifyAccount(models.Model):
         default=True,
     )
 
-    image_1920 = fields.Image(
-        string="Logo",
-    )
+    image_1920 = fields.Image(        string="Logo",    )
     name = fields.Char(required=True)
     shop = fields.Char(
         string="Shop URL",
@@ -33,44 +31,28 @@ class ShopifyAccount(models.Model):
 
     access_token = fields.Char(
         string="Access Token",
-        readonly=True,
-        copy=False,
     )
     refresh_token = fields.Char(
         string="Refresh Token",
-        readonly=True,
-        copy=False,
     )
     scopes = fields.Char(
         string="Scopes autorizados",
-        readonly=True,
-        copy=False,
     )
 
     token_expires_in = fields.Integer(
         string="Duración Access Token",
-        readonly=True,
-        copy=False,
     )
     token_expiration_date = fields.Datetime(
         string="Expiración Access Token",
-        readonly=True,
-        copy=False,
     )
     refresh_token_expiration_date = fields.Datetime(
         string="Expiración Refresh Token",
-        readonly=True,
-        copy=False,
     )
     last_token_refresh = fields.Datetime(
         string="Última renovación",
-        readonly=True,
-        copy=False,
     )
     token_error = fields.Text(
         string="Último error de token",
-        readonly=True,
-        copy=False,
     )
 
     state = fields.Selection(
@@ -92,7 +74,7 @@ class ShopifyAccount(models.Model):
 
     last_order_sync = fields.Datetime(
         string="Última consulta de órdenes",
-        readonly=True,
+
     )
     webhook_callback_url = fields.Char(
         string="URL de Webhooks",
@@ -100,19 +82,17 @@ class ShopifyAccount(models.Model):
             "URL pública donde Shopify enviará las notificaciones. "
             "Ejemplo: https://dominio.com/shopify/webhooks"
         ),
-        copy=False,
+
     )
 
     webhook_last_sync = fields.Datetime(
         string="Última sincronización de webhooks",
-        readonly=True,
-        copy=False,
+
     )
 
     webhook_sync_message = fields.Text(
         string="Resultado de sincronización",
-        readonly=True,
-        copy=False,
+
     )
 
     def _get_shop_domain(self):

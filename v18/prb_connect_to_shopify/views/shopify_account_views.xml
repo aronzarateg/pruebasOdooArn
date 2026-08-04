@@ -56,6 +56,16 @@
                         <group string="OAuth">
                             <field name="access_token" readonly="1" password="True"/>
                             <field name="scopes" readonly="1"/>
+
+                            <field name="refresh_token" readonly="1"/>
+                            <field name="refresh_token_expiration_date" readonly="1"/>
+                            <field name="token_expires_in" readonly="1"/>
+                            <field name="token_expiration_date" readonly="1"/>
+                            <field name="last_token_refresh" readonly="1"/>
+                            <field name="token_error" readonly="1"/>
+                            <field name="webhook_callback_url" readonly="1"/>
+                            <field name="webhook_last_sync" readonly="1"/>
+                            <field name="webhook_sync_message" readonly="1"/>
                         </group>
 
                     </group>

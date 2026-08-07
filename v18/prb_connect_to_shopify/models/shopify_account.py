@@ -46,7 +46,6 @@ class ShopifyAccount(models.Model):
         required=True,
     )
 
-
     last_order_sync = fields.Datetime(string="Última consulta de órdenes")
     webhook_callback_url = fields.Char(
         string="URL de Webhooks",
@@ -83,6 +82,7 @@ class ShopifyAccount(models.Model):
 
         return shop
 
+    # CONECCION
     def action_connect_shopify(self):
         self.ensure_one()
 
@@ -141,22 +141,12 @@ class ShopifyAccount(models.Model):
 
     def _check_shopify_connection(self):
         self.ensure_one()
-
         if not self.active:
-            raise UserError(
-                _("La cuenta Shopify está inactiva.")
-            )
-
+            raise UserError(_("La cuenta Shopify está inactiva."))
         if self.state != "connected":
-            raise UserError(
-                _("La cuenta Shopify no está conectada.")
-            )
-
+            raise UserError(_("La cuenta Shopify no está conectada."))
         if not self.access_token:
-            raise UserError(
-                _("La cuenta Shopify no tiene Access Token.")
-            )
-
+            raise UserError(_("La cuenta Shopify no tiene Access Token."))
         granted_scopes = {
             scope.strip()
             for scope in (self.scopes or "").split(",")
@@ -198,6 +188,264 @@ class ShopifyAccount(models.Model):
                 "sticky": False,
             },
         }
+
+    def _get_shopify_orders_query(self):
+        return """
+            query GetOrders(
+                $first: Int!,
+                $after: String,
+                $query: String!
+            ) {
+                orders(
+                    first: $first,
+                    after: $after,
+                    query: $query,
+                    sortKey: CREATED_AT,
+                    reverse: false
+                ) {
+                    nodes {
+                        id
+                        legacyResourceId
+                        name
+                        createdAt
+                        updatedAt
+                        cancelledAt
+                        displayFinancialStatus
+                        displayFulfillmentStatus
+                        email
+
+                        customAttributes {
+                            key
+                            value
+                        }
+
+                        orderDocumentNumber: metafield(
+                            namespace: "custom"
+                            key: "document_number"
+                        ) {
+                            value
+                        }
+
+                        orderDocumentType: metafield(
+                            namespace: "custom"
+                            key: "document_type"
+                        ) {
+                            value
+                        }
+
+                        totalPriceSet {
+                            shopMoney {
+                                amount
+                                currencyCode
+                            }
+                        }
+
+                        customer {
+                            id
+                            firstName
+                            lastName
+                            email
+                            phone
+
+                            customerDocumentNumber: metafield(
+                                namespace: "custom"
+                                key: "document_number"
+                            ) {
+                                value
+                            }
+
+                            customerDocumentType: metafield(
+                                namespace: "custom"
+                                key: "document_type"
+                            ) {
+                                value
+                            }
+                        }
+
+                        billingAddress {
+                            firstName
+                            lastName
+                            company
+                            address1
+                            address2
+                            city
+                            province
+                            provinceCode
+                            zip
+                            country
+                            countryCodeV2
+                            phone
+                        }
+
+                        shippingAddress {
+                            firstName
+                            lastName
+                            company
+                            address1
+                            address2
+                            city
+                            province
+                            provinceCode
+                            zip
+                            country
+                            countryCodeV2
+                            phone
+                        }
+
+                        lineItems(first: 100) {
+                            nodes {
+                                id
+                                name
+                                sku
+                                quantity
+                                currentQuantity
+
+                                originalUnitPriceSet {
+                                    shopMoney {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                            }
+
+                            pageInfo {
+                                hasNextPage
+                                endCursor
+                            }
+                        }
+                    }
+
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
+                }
+            }
+        """
+
+    def _sync_shopify_orders(self, date_from=None, date_to=None, max_orders=None, ):
+        self.ensure_one()
+        self._check_shopify_connection()
+        utc_date_from, utc_date_to = (self._prepare_shopify_order_date_range(date_from=date_from, date_to=date_to))
+
+        query_filter = (
+                "created_at:>='%s' created_at:<'%s'"
+                % (
+                    utc_date_from.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    utc_date_to.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                )
+        )
+        print("query_filter", query_filter)
+
+        if max_orders is not None and max_orders < 1:
+            raise UserError(
+                _("El límite debe ser mayor que cero.")
+            )
+
+        graphql_query = self._get_shopify_orders_query()
+        order_model = self.env["shopify.order"]
+
+        cursor = None
+        processed_orders = self.env["shopify.order"]
+        fetched_count = 0
+
+        while True:
+            if max_orders:
+                remaining = max_orders - fetched_count
+
+                if remaining <= 0:
+                    break
+
+                page_size = min(remaining, 250)
+            else:
+                page_size = 250
+
+            response = self.env["shopify.service"].graphql(
+                account=self,
+                query=graphql_query,
+                variables={
+                    "first": page_size,
+                    "after": cursor,
+                    "query": query_filter,
+                },
+            )
+            errors = response.get("errors")
+            if errors:
+                raise UserError(
+                    _("Shopify devolvió errores:\n%s") % errors
+                )
+            orders_data = (response.get("data", {}).get("orders", {}))
+            # print("orders_data", orders_data)
+
+            orders = orders_data.get("nodes", [])
+            page_info = orders_data.get("pageInfo", {})
+
+            for order_data in orders:
+                order = order_model.create_or_update_from_shopify(account=self, data=order_data)
+                processed_orders |= order
+
+            fetched_count += len(orders)
+
+            has_next_page = page_info.get("hasNextPage")
+            cursor = page_info.get("endCursor")
+
+            if not has_next_page or not cursor:
+                break
+
+            if not orders:
+                break
+
+        self.sudo().write({
+            "last_order_sync": fields.Datetime.now(),
+        })
+
+        '''
+        _logger.info(
+            (
+                "Shopify: se sincronizaron %s órdenes para la cuenta "
+                "%s. Rango UTC: %s - %s"
+            ),
+            len(processed_orders),
+            self.display_name,
+            utc_date_from,
+            utc_date_to,
+        )
+        '''
+
+        return processed_orders
+
+    def _prepare_shopify_order_date_range(self, date_from=None, date_to=None):
+        self.ensure_one()
+
+        today = fields.Date.context_today(self)
+        yesterday = today - timedelta(days=1)
+
+        date_from = fields.Date.to_date(date_from) if date_from else yesterday
+        date_to = fields.Date.to_date(date_to) if date_to else yesterday
+
+        if date_from > date_to:
+            raise UserError(
+                _("La fecha inicial no puede ser mayor que la fecha final.")
+            )
+
+        timezone_name = self.env.user.tz or "UTC"
+        timezone = pytz.timezone(timezone_name)
+
+        local_date_from = timezone.localize(
+            datetime.combine(date_from, time.min)
+        )
+
+        local_date_to_exclusive = timezone.localize(
+            datetime.combine(
+                date_to + timedelta(days=1),
+                time.min,
+            )
+        )
+
+        utc_date_from = local_date_from.astimezone(pytz.UTC)
+        utc_date_to_exclusive = local_date_to_exclusive.astimezone(pytz.UTC)
+
+        return utc_date_from, utc_date_to_exclusive
 
     def action_sync_webhooks(self):
         self.ensure_one()
@@ -303,264 +551,24 @@ class ShopifyAccount(models.Model):
             }
         }
 
-    def _prepare_shopify_order_date_range(self, date_from=None, date_to=None):
-        self.ensure_one()
-
-        today = fields.Date.context_today(self)
-        yesterday = today - timedelta(days=1)
-
-        date_from = fields.Date.to_date(date_from) if date_from else yesterday
-        date_to = fields.Date.to_date(date_to) if date_to else yesterday
-
-        if date_from > date_to:
-            raise UserError(
-                _("La fecha inicial no puede ser mayor que la fecha final.")
-            )
-
-        timezone_name = self.env.user.tz or "UTC"
-        timezone = pytz.timezone(timezone_name)
-
-        local_date_from = timezone.localize(
-            datetime.combine(date_from, time.min)
-        )
-
-        local_date_to_exclusive = timezone.localize(
-            datetime.combine(
-                date_to + timedelta(days=1),
-                time.min,
-            )
-        )
-
-        utc_date_from = local_date_from.astimezone(pytz.UTC)
-        utc_date_to_exclusive = local_date_to_exclusive.astimezone(pytz.UTC)
-
-        return utc_date_from, utc_date_to_exclusive
-
-    def _get_shopify_orders_query(self):
-        return """
-            query GetOrders(
-                $first: Int!,
-                $after: String,
-                $query: String!
-            ) {
-                orders(
-                    first: $first,
-                    after: $after,
-                    query: $query,
-                    sortKey: CREATED_AT,
-                    reverse: false
-                ) {
-                    nodes {
-                        id
-                        legacyResourceId
-                        name
-                        createdAt
-                        updatedAt
-                        cancelledAt
-                        displayFinancialStatus
-                        displayFulfillmentStatus
-                        email
-
-                        customAttributes {
-                            key
-                            value
-                        }
-
-                        orderDocumentNumber: metafield(
-                            namespace: "custom"
-                            key: "document_number"
-                        ) {
-                            value
-                        }
-
-                        orderDocumentType: metafield(
-                            namespace: "custom"
-                            key: "document_type"
-                        ) {
-                            value
-                        }
-
-                        totalPriceSet {
-                            shopMoney {
-                                amount
-                                currencyCode
-                            }
-                        }
-
-                        customer {
-                            id
-                            firstName
-                            lastName
-                            email
-                            phone
-
-                            customerDocumentNumber: metafield(
-                                namespace: "custom"
-                                key: "document_number"
-                            ) {
-                                value
-                            }
-
-                            customerDocumentType: metafield(
-                                namespace: "custom"
-                                key: "document_type"
-                            ) {
-                                value
-                            }
-                        }
-
-                        shippingAddress {
-                            firstName
-                            lastName
-                            address1
-                            address2
-                            city
-                            province
-                            zip
-                            countryCodeV2
-                            phone
-                        }
-
-                        lineItems(first: 100) {
-                            nodes {
-                                id
-                                name
-                                sku
-                                quantity
-                                currentQuantity
-
-                                originalUnitPriceSet {
-                                    shopMoney {
-                                        amount
-                                        currencyCode
-                                    }
-                                }
-                            }
-
-                            pageInfo {
-                                hasNextPage
-                                endCursor
-                            }
-                        }
-                    }
-
-                    pageInfo {
-                        hasNextPage
-                        endCursor
-                    }
-                }
-            }
-        """
-
-
-    def _sync_shopify_orders(self, date_from=None, date_to=None, max_orders=None, ):
-        self.ensure_one()
-        self._check_shopify_connection()
-        utc_date_from, utc_date_to = (self._prepare_shopify_order_date_range(date_from=date_from, date_to=date_to))
-
-        query_filter = (
-                "created_at:>='%s' created_at:<'%s'"
-                % (
-                    utc_date_from.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    utc_date_to.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                )
-        )
-
-        if max_orders is not None and max_orders < 1:
-            raise UserError(
-                _("El límite debe ser mayor que cero.")
-            )
-
-        graphql_query = self._get_shopify_orders_query()
-        order_model = self.env["shopify.order"]
-
-        cursor = None
-        processed_orders = self.env["shopify.order"]
-        fetched_count = 0
-
-        while True:
-            if max_orders:
-                remaining = max_orders - fetched_count
-
-                if remaining <= 0:
-                    break
-
-                page_size = min(remaining, 250)
-            else:
-                page_size = 250
-
-            response = self.env["shopify.service"].graphql(
-                account=self,
-                query=graphql_query,
-                variables={
-                    "first": page_size,
-                    "after": cursor,
-                    "query": query_filter,
-                },
-            )
-            errors = response.get("errors")
-            if errors:
-                raise UserError(
-                    _("Shopify devolvió errores:\n%s") % errors
-                )
-            orders_data = (response.get("data", {}).get("orders", {}))
-            # print("orders_data", orders_data)
-
-            orders = orders_data.get("nodes", [])
-            page_info = orders_data.get("pageInfo", {})
-
-            for order_data in orders:
-                order = order_model.create_or_update_from_shopify(account=self, data=order_data)
-                processed_orders |= order
-
-            fetched_count += len(orders)
-
-            has_next_page = page_info.get("hasNextPage")
-            cursor = page_info.get("endCursor")
-
-            if not has_next_page or not cursor:
-                break
-
-            if not orders:
-                break
-
-        self.sudo().write({
-            "last_order_sync": fields.Datetime.now(),
-        })
-
-        _logger.info(
-            (
-                "Shopify: se sincronizaron %s órdenes para la cuenta "
-                "%s. Rango UTC: %s - %s"
-            ),
-            len(processed_orders),
-            self.display_name,
-            utc_date_from,
-            utc_date_to,
-        )
-
-        return processed_orders
-
+    # CRONS
     @api.model
     def cron_sync_shopify_orders(self):
         today = fields.Date.context_today(self)
-        date_from = today - timedelta(days=1)
+        yesterday = today - timedelta(days=1)
 
         accounts = self.sudo().search([
             ("active", "=", True),
             ("state", "=", "connected"),
             ("access_token", "!=", False),
         ])
-
+        print("accounts", accounts)
         for account in accounts:
             print("account", account)
-
-            '''
-                        try:
+            try:
                 with self.env.cr.savepoint():
                     account._sync_shopify_orders(
-                        date_from=date_from,
-                        date_to=today,
+                        date_from=yesterday, date_to=yesterday,
                         max_orders=None,
                     )
 
@@ -572,7 +580,6 @@ class ShopifyAccount(models.Model):
                     ),
                     account.display_name,
                 )
-            '''
 
         return True
 

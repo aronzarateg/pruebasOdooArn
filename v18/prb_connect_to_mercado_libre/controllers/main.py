@@ -36,6 +36,7 @@ class MercadoLibreController(http.Controller):
 
     @http.route("/mercadolibre_v2/notifications", auth="public", type="http", methods=["POST"], csrf=False, )
     def meli_notifications(self, **kw):
+        print("meli_notifications")
         try:
             raw_body = request.httprequest.get_data()
             data = json.loads(raw_body.decode("utf-8") or "{}")

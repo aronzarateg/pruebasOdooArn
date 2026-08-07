@@ -27,11 +27,7 @@ class ShopifyOrder(models.Model):
         string="Tipo de documento",
     )
 
-    document_number = fields.Char(
-        string="Número de documento",
-        index=True,
-    )
-
+    document_number = fields.Char(string="Número de documento", index=True, )
     shopify_created_at = fields.Datetime(string="Fecha de creación Shopify")
     shopify_updated_at = fields.Datetime(string="Fecha de actualización Shopify")
     processed_at = fields.Datetime(string="Fecha de procesamiento Shopify")
@@ -86,13 +82,7 @@ class ShopifyOrder(models.Model):
     source_name = fields.Char()
     payload = fields.Text()
 
-    sale_order_id = fields.Many2one(
-        "sale.order",
-        string="Pedido de venta",
-        readonly=True,
-        copy=False,
-    )
-
+    sale_order_id = fields.Many2one("sale.order", string="Pedido de venta", readonly=True, copy=False, )
     state = fields.Selection(
         [
             ("draft", "Pendiente"),
@@ -111,7 +101,6 @@ class ShopifyOrder(models.Model):
     )
 
     error_message = fields.Text(copy=False)
-
     _sql_constraints = [
         (
             "shopify_order_account_unique",
@@ -122,11 +111,7 @@ class ShopifyOrder(models.Model):
 
     @api.model
     def create_or_update_from_shopify(self, account, data):
-        order_id = str(
-            data.get("legacyResourceId")
-            or data.get("id")
-            or ""
-        )
+        order_id = str(data.get("legacyResourceId") or data.get("id") or "")
         print("order_id", order_id)
 
         if not order_id:
@@ -292,7 +277,7 @@ class ShopifyOrder(models.Model):
                 default=str,
             ),
         }
-        # print("vals:",vals)
+        print("vals:", vals)
 
         return vals
 

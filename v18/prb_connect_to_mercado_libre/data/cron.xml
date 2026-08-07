@@ -28,7 +28,7 @@
         <field name="code">model._cron_sync_orders()</field>
         <field name="interval_number">1</field>
         <field name="interval_type">days</field>
-        <field name="active">True</field>
+        <field name="active">False</field>
     </record>
     <record id="ir_cron_create_meli_sale_orders" model="ir.cron">
         <field name="name">
@@ -43,7 +43,7 @@
 
         <field name="interval_number">1</field>
         <field name="interval_type">days</field>
-        <field name="active">True</field>
+        <field name="active">False</field>
     </record>
 
 

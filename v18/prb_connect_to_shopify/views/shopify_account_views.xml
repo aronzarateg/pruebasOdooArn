@@ -10,6 +10,7 @@
 
                 <field name="name"/>
                 <field name="shop"/>
+                <field name="tienda"/>
                 <field name="state"/>
             </list>
         </field>
@@ -51,6 +52,8 @@
                             <field name="client_secret" password="True"/>
                             <field name="redirect_uri"/>
                             <field name="active"/>
+
+                            <field name="tienda"/>
                         </group>
 
                         <group string="OAuth">
@@ -76,7 +79,7 @@
                                        invisible="not active or state != 'connected'">
 
                                     <group>
-                                        <field name="order_limit"/>
+
                                         <field name="last_order_sync" readonly="1"/>
                                     </group>
 

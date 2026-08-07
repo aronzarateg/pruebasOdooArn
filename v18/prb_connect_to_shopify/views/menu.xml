@@ -6,7 +6,11 @@
               name="Api shopify"
               sequence="0"
               web_icon="prb_connect_to_shopify,static/description/icon.png"/>
-
+    <!-- MENÚ ORDENES-->
+    <menuitem id="menu_shopify_orders"
+              name="Ordenes"
+              parent="menu_shopify_app_root"
+              sequence="1"/>
     <!-- MENÚ SHOPIFY-->
     <menuitem id="menu_shopify_config"
               name="Configuración"

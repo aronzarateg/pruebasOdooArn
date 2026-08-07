@@ -2,39 +2,21 @@
 <odoo noupdate="1">
 
     <record id="ir_cron_sync_falabella_orders" model="ir.cron">
-        <field name="name">
-            Falabella: Sincronizar órdenes pendientes
-        </field>
-
+        <field name="name">Falabella: Sincronizar órdenes pendientes</field>
         <field name="model_id" ref="model_falabella_account"/>
-
         <field name="state">code</field>
-
-        <field name="code">
-            model._cron_sync_orders()
-        </field>
-
-        <field name="interval_number">10</field>
-        <field name="interval_type">minutes</field>
-
-        <field name="active">True</field>
+        <field name="code">model._cron_sync_orders()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">False</field>
     </record>
     <record id="ir_cron_create_falabella_sale_orders" model="ir.cron">
-        <field name="name">
-            Falabella: Crear cotizaciones pendientes
-        </field>
-
+        <field name="name">Falabella: Crear cotizaciones pendientes</field>
         <field name="model_id" ref="model_falabella_order"/>
-
         <field name="state">code</field>
-
-        <field name="code">
-            model._cron_create_sale_orders(limit=50)
-        </field>
-
-        <field name="interval_number">10</field>
-        <field name="interval_type">minutes</field>
-
+        <field name="code">model._cron_create_sale_orders(limit=50)</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
         <field name="active">False</field>
     </record>
 

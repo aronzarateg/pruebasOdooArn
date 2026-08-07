@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shopify_order_list" model="ir.ui.view">
+        <field name="name">shopify.order.list</field>
+        <field name="model">shopify.order</field>
+        <field name="arch" type="xml">
+            <list string="Órdenes Shopify">
+                <field name="name"/>
+                <field name="shopify_order_id" optional="hide"/>
+                <field name="account_id"/>
+                <field name="shopify_created_at"/>
+                <field name="customer_first_name" optional="hide"/>
+                <field name="customer_last_name" optional="hide"/>
+                <field name="customer_email"/>
+                <field name="financial_status"/>
+                <field name="fulfillment_status"/>
+                <field name="currency" optional="hide"/>
+                <field name="amount_untaxed" sum="Subtotal"/>
+                <field name="amount_tax" sum="Impuestos"/>
+                <field name="amount_discount" sum="Descuentos"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="sale_order_id"/>
+                <field
+                        name="state"
+                        widget="badge"
+                        decoration-info="state == 'draft'"
+                        decoration-success="state == 'sale_created'"
+                        decoration-danger="state == 'error'"
+                        decoration-muted="state == 'cancelled'"
+                />
+            </list>
+        </field>
+    </record>
+    <record id="view_shopify_order_form" model="ir.ui.view">
+        <field name="name">shopify.order.form</field>
+        <field name="model">shopify.order</field>
+        <field name="arch" type="xml">
+            <form string="Orden Shopify" create="0">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,sale_created,error,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="%(sale.action_orders)d" type="action" class="oe_stat_button"
+                                icon="fa-shopping-cart" invisible="not sale_order_id"
+                                context="{'search_default_id': sale_order_id}">
+                            <field name="sale_order_id" widget="statinfo" string="Pedido de venta"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Pedido creado" bg_color="text-bg-success"
+                            invisible="state != 'sale_created'"/>
+                    <widget name="web_ribbon" title="Error" bg_color="text-bg-danger" invisible="state != 'error'"/>
+                    <widget name="web_ribbon" title="Cancelado" bg_color="text-bg-secondary"
+                            invisible="state != 'cancelled'"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Información Shopify">
+                            <field name="account_id" readonly="1"/>
+                            <field name="shopify_order_id" readonly="1"/>
+                            <field name="customer_shopify_id" readonly="1"/>
+                            <field name="shopify_created_at" readonly="1"/>
+                            <field name="shopify_updated_at" readonly="1"/>
+                            <field name="processed_at" readonly="1"/>
+                            <field name="cancelled_at" readonly="1"/>
+                        </group>
+                        <group string="Estado de la orden">
+                            <field name="financial_status" readonly="1"/>
+                            <field name="fulfillment_status" readonly="1"/>
+                            <field name="sale_order_id" readonly="1"/>
+                            <field name="currency" readonly="1"/>
+                            <field name="source_name" readonly="1"/>
+                            <field name="tags" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Cliente" name="customer">
+                            <group>
+                                <group string="Datos del cliente">
+                                    <field name="customer_shopify_id" readonly="1"/>
+
+                                    <field name="customer_first_name" readonly="1"/>
+                                    <field name="customer_last_name" readonly="1"/>
+
+                                    <field name="document_type" readonly="1"/>
+                                    <field name="document_number" readonly="1"/>
+
+                                    <field name="customer_email" readonly="1"/>
+                                    <field name="customer_phone" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Dirección de envío" name="shipping">
+                            <group>
+                                <group string="Contacto">
+                                    <field name="shipping_name" readonly="1"/>
+                                    <field name="shipping_first_name" readonly="1"/>
+                                    <field name="shipping_last_name" readonly="1"/>
+                                    <field name="shipping_company" readonly="1"/>
+                                    <field name="shipping_phone" readonly="1"/>
+                                </group>
+                                <group string="Dirección">
+                                    <field name="shipping_address1" readonly="1"/>
+                                    <field name="shipping_address2" readonly="1"/>
+                                    <field name="shipping_city" readonly="1"/>
+                                    <field name="shipping_zip" readonly="1"/>
+                                    <field name="shipping_province" readonly="1"/>
+                                    <field name="shipping_province_code" readonly="1"/>
+                                    <field name="shipping_country" readonly="1"/>
+                                    <field name="shipping_country_code" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Dirección de facturación" name="billing">
+                            <group>
+                                <group string="Contacto">
+                                    <field name="billing_name" readonly="1"/>
+                                    <field name="billing_first_name" readonly="1"/>
+                                    <field name="billing_last_name" readonly="1"/>
+                                    <field name="billing_company" readonly="1"/>
+                                    <field name="billing_phone" readonly="1"/>
+                                </group>
+                                <group string="Dirección">
+                                    <field name="billing_address1" readonly="1"/>
+                                    <field name="billing_address2" readonly="1"/>
+                                    <field name="billing_city" readonly="1"/>
+                                    <field name="billing_zip" readonly="1"/>
+                                    <field name="billing_province" readonly="1"/>
+                                    <field name="billing_province_code" readonly="1"/>
+                                    <field name="billing_country" readonly="1"/>
+                                    <field name="billing_country_code" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Productos" name="lines">
+                            <field name="line_ids" readonly="1">
+                                <list>
+                                    <field name="product_id"/>
+                                    <field name="sku"/>
+                                    <field name="barcode" optional="hide"/>
+                                    <field name="name"/>
+                                    <field name="quantity"/>
+                                    <field name="price_unit"/>
+                                    <field name="discount_amount"/>
+                                    <field name="tax_amount"/>
+                                    <field name="shopify_line_id" optional="hide"/>
+                                    <field name="shopify_product_id" optional="hide"/>
+                                    <field name="shopify_variant_id" optional="hide"/>
+                                </list>
+                                <form string="Línea Shopify">
+                                    <sheet>
+                                        <group>
+                                            <group string="Producto">
+                                                <field name="product_id" readonly="1"/>
+                                                <field name="name" readonly="1"/>
+                                                <field name="sku" readonly="1"/>
+                                                <field name="barcode" readonly="1"/>
+                                            </group>
+                                            <group string="Identificadores Shopify">
+                                                <field name="shopify_line_id" readonly="1"/>
+                                                <field name="shopify_product_id" readonly="1"/>
+                                                <field name="shopify_variant_id" readonly="1"/>
+                                            </group>
+                                        </group>
+                                        <group>
+                                            <group string="Cantidades y precios">
+                                                <field name="quantity" readonly="1"/>
+                                                <field name="price_unit" readonly="1"/>
+                                                <field name="discount_amount" readonly="1"/>
+                                                <field name="tax_amount" readonly="1"/>
+                                            </group>
+                                        </group>
+                                        <notebook>
+                                            <page string="Payload">
+                                                <field name="payload" widget="text" nolabel="1" readonly="1"/>
+                                            </page>
+                                        </notebook>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Totales" name="totals">
+                            <group>
+                                <group string="Importes">
+                                    <field name="currency" readonly="1"/>
+                                    <field name="amount_untaxed" readonly="1"/>
+                                    <field name="amount_discount" readonly="1"/>
+                                    <field name="amount_tax" readonly="1"/>
+                                    <field name="amount_total" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Información adicional" name="additional">
+                            <group>
+                                <field name="note" readonly="1"/>
+                            </group>
+                            <group string="Error de procesamiento" invisible="not error_message">
+                                <field name="error_message" nolabel="1" readonly="1"/>
+                            </group>
+                        </page>
+                        <page string="Payload Shopify" name="payload">
+                            <field name="payload" widget="text" nolabel="1" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_shopify_order_search" model="ir.ui.view">
+        <field name="name">shopify.order.search</field>
+        <field name="model">shopify.order</field>
+        <field name="arch" type="xml">
+            <search string="Buscar órdenes Shopify">
+
+                <field
+                        name="name"
+                        string="Orden"
+                        filter_domain="[
+                        '|',
+                        ('name', 'ilike', self),
+                        ('shopify_order_id', 'ilike', self)
+                    ]"
+                />
+
+                <field name="account_id"/>
+                <field name="customer_email"/>
+                <field name="customer_phone"/>
+                <field name="financial_status"/>
+                <field name="fulfillment_status"/>
+                <field name="sale_order_id"/>
+
+                <separator/>
+
+                <filter
+                        name="filter_draft"
+                        string="Pendientes"
+                        domain="[('state', '=', 'draft')]"
+                />
+
+                <filter
+                        name="filter_sale_created"
+                        string="Pedido creado"
+                        domain="[('state', '=', 'sale_created')]"
+                />
+
+                <filter
+                        name="filter_error"
+                        string="Con error"
+                        domain="[('state', '=', 'error')]"
+                />
+
+                <filter
+                        name="filter_cancelled"
+                        string="Canceladas"
+                        domain="[('state', '=', 'cancelled')]"
+                />
+
+                <separator/>
+
+                <filter
+                        name="filter_without_sale"
+                        string="Sin pedido de venta"
+                        domain="[('sale_order_id', '=', False)]"
+                />
+
+                <filter
+                        name="filter_with_sale"
+                        string="Con pedido de venta"
+                        domain="[('sale_order_id', '!=', False)]"
+                />
+
+                <separator/>
+
+                <filter
+                        name="filter_today"
+                        string="Hoy"
+                        date="shopify_created_at"
+                />
+
+                <group expand="0" string="Agrupar por">
+
+                    <filter
+                            name="group_by_account"
+                            string="Cuenta Shopify"
+                            context="{'group_by': 'account_id'}"
+                    />
+
+                    <filter
+                            name="group_by_state"
+                            string="Estado"
+                            context="{'group_by': 'state'}"
+                    />
+
+                    <filter
+                            name="group_by_financial_status"
+                            string="Estado financiero"
+                            context="{'group_by': 'financial_status'}"
+                    />
+
+                    <filter
+                            name="group_by_fulfillment_status"
+                            string="Estado de entrega"
+                            context="{'group_by': 'fulfillment_status'}"
+                    />
+
+                    <filter
+                            name="group_by_currency"
+                            string="Moneda"
+                            context="{'group_by': 'currency'}"
+                    />
+
+                    <filter
+                            name="group_by_date"
+                            string="Fecha de creación"
+                            context="{
+                            'group_by': 'shopify_created_at:day'
+                        }"
+                    />
+
+                </group>
+
+            </search>
+        </field>
+    </record>
+    <record id="action_shopify_order" model="ir.actions.act_window">
+        <field name="name">Órdenes Shopify</field>
+        <field name="res_model">shopify.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_shopify_order_search"/>
+
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay órdenes de Shopify sincronizadas.
+            </p>
+            <p>
+                Las órdenes aparecerán después de ejecutar la sincronización
+                desde la cuenta Shopify o mediante la tarea programada.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_shopify_order"
+              name="Órdenes"
+              parent="prb_connect_to_shopify.menu_shopify_orders"
+              action="action_shopify_order"
+              sequence="1"/>
+</odoo>
+

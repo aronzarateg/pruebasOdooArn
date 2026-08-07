@@ -12,28 +12,20 @@ class MeliOrderService(models.AbstractModel):
 
     def sync_orders(self, account, date_from=None, date_to=None):
         account.ensure_one()
-        now = fields.Datetime.now()
-        date_to = date_to or now
-        date_from = (
-                date_from
-                or account.last_order_sync
-                # or datetime(2019, 1, 1, 0, 0, 0)
-                or now - timedelta(days=1)
-        )
+        #now = fields.Datetime.now()
+        #date_to = date_to or now
+
 
         params = {
             "seller": account.meli_user_id,
-            "order.date_last_updated.from": self._format_meli_datetime(
-                date_from
-            ),
-            "order.date_last_updated.to": self._format_meli_datetime(
-                date_to
-            ),
+            "order.date_last_updated.from": date_from,
+            "order.date_last_updated.to": date_to,
             "sort": "date_asc",
             "limit": 50,
             "offset": 0,
         }
         print("params", params)
+        raise UserError('dddddd')
         api = self.env["meli.service"]
 
         total_processed = 0

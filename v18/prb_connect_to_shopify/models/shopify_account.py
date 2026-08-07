@@ -375,7 +375,7 @@ class ShopifyAccount(models.Model):
                     _("Shopify devolvió errores:\n%s") % errors
                 )
             orders_data = (response.get("data", {}).get("orders", {}))
-            # print("orders_data", orders_data)
+            print("orders_data", orders_data)
 
             orders = orders_data.get("nodes", [])
             page_info = orders_data.get("pageInfo", {})

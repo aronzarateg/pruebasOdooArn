@@ -11,19 +11,12 @@ import hmac
 import json
 import logging
 
-
 _logger = logging.getLogger(__name__)
 
 
 class ShopifyController(http.Controller):
 
-    @http.route(
-        "/shopify/callback",
-        auth="public",
-        type="http",
-        methods=["GET"],
-        csrf=False,
-    )
+    @http.route("/shopify/callback", auth="public", type="http", methods=["GET"], csrf=False, )
     def shopify_callback(self, **kw):
         _logger.info("SHOPIFY CALLBACK PARAMS: %s", kw)
 
@@ -181,13 +174,7 @@ class ShopifyController(http.Controller):
             headers=[("Content-Type", "text/html; charset=utf-8")],
         )
 
-    @http.route(
-        "/shopify/webhooks",
-        type="http",
-        auth="public",
-        methods=["POST"],
-        csrf=False,
-    )
+    @http.route("/shopify/webhooks", type="http", auth="public", methods=["POST"], csrf=False, )
     def shopify_webhook(self, **kwargs):
         raw_body = request.httprequest.get_data()
 

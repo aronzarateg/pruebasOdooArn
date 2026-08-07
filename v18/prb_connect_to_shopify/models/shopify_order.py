@@ -145,7 +145,9 @@ class ShopifyOrder(models.Model):
         )
 
         customer = data.get("customer") or {}
-        print("customer:", customer)
+        print("customer:", customer)#company
+
+
         billing_address = data.get("billingAddress") or {}
         print("billing_address:", billing_address)
         shipping_address = data.get("shippingAddress") or {}
@@ -282,47 +284,15 @@ class ShopifyOrder(models.Model):
         return vals
 
     def _get_shopify_customer_document(self, data):
-        customer = data.get("customer") or {}
+        billing_address = data.get("billingAddress") or {}
 
         document_number = (
-                (customer.get("customerDocumentNumber") or {}).get("value")
-                or (data.get("orderDocumentNumber") or {}).get("value")
-        )
+                billing_address.get("company") or ""
+        ).strip()
 
-        document_type = (
-                (customer.get("customerDocumentType") or {}).get("value")
-                or (data.get("orderDocumentType") or {}).get("value")
-        )
-
-        custom_attributes = {
-            str(attribute.get("key") or "").strip().lower():
-                str(attribute.get("value") or "").strip()
-            for attribute in data.get("customAttributes") or []
-        }
-
-        document_number = (
-                document_number
-                or custom_attributes.get("numero de documento")
-                or custom_attributes.get("número de documento")
-                or custom_attributes.get("document_number")
-                or custom_attributes.get("dni")
-                or custom_attributes.get("ruc")
-        )
-
-        document_type = (
-                document_type
-                or custom_attributes.get("tipo de documento")
-                or custom_attributes.get("document_type")
-                or custom_attributes.get("tipo_documento")
-        )
+        document_type = False
 
         if document_number:
-            document_number = str(document_number).strip()
-
-        if document_type:
-            document_type = str(document_type).strip().upper()
-
-        if document_number and not document_type:
             numeric_document = "".join(
                 character
                 for character in document_number
@@ -333,6 +303,8 @@ class ShopifyOrder(models.Model):
                 document_type = "DNI"
             elif len(numeric_document) == 11:
                 document_type = "RUC"
+
+            document_number = numeric_document
 
         return document_type or False, document_number or False
 

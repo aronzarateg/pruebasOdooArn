@@ -24,3 +24,15 @@ class GasCylinderContent(models.Model):
         for rec in self:
             if rec.gas_product_id.product_tmpl_id.gas_product_type != 'gas':
                 raise ValidationError(_('Select a product classified as Gas.'))
+
+    def write(self, vals):
+        protected = {'quantity', 'available_quantity'}
+
+        if protected.intersection(vals):
+            if not self.env.context.get('gas_content_posting'):
+                raise ValidationError(_(
+                    'Los saldos de gas solo pueden modificarse '
+                    'mediante contabilización autorizada.'
+                ))
+
+        return super().write(vals)

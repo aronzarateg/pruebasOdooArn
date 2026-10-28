@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gas_op_user,gas.operation.user,model_gas_cylinder_operation,gas_cylinder_base.group_gas_cylinder_user,1,1,1,0
+access_gas_op_manager,gas.operation.manager,model_gas_cylinder_operation,gas_cylinder_base.group_gas_cylinder_manager,1,1,1,1
+access_gas_op_line_user,gas.operation.line.user,model_gas_cylinder_operation_line,gas_cylinder_base.group_gas_cylinder_user,1,1,1,0
+access_gas_op_line_manager,gas.operation.line.manager,model_gas_cylinder_operation_line,gas_cylinder_base.group_gas_cylinder_manager,1,1,1,1
+access_gas_op_config_user,gas.operation.config.user,model_gas_cylinder_operation_config,gas_cylinder_base.group_gas_cylinder_user,1,0,0,0
+access_gas_op_config_manager,gas.operation.config.manager,model_gas_cylinder_operation_config,gas_cylinder_base.group_gas_cylinder_manager,1,1,1,1
+access_gas_move_user,gas.content.move.user,model_gas_cylinder_content_move,gas_cylinder_base.group_gas_cylinder_user,1,0,0,0
+access_gas_move_manager,gas.content.move.manager,model_gas_cylinder_content_move,gas_cylinder_base.group_gas_cylinder_manager,1,0,0,0

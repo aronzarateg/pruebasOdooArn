@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gas_cylinder_user,gas.cylinder.user,model_gas_cylinder,gas_cylinder_base.group_gas_cylinder_user,1,1,1,0
+access_gas_cylinder_manager,gas.cylinder.manager,model_gas_cylinder,gas_cylinder_base.group_gas_cylinder_manager,1,1,1,1
+access_gas_content_user,gas.content.user,model_gas_cylinder_content,gas_cylinder_base.group_gas_cylinder_user,1,0,0,0
+access_gas_content_manager,gas.content.manager,model_gas_cylinder_content,gas_cylinder_base.group_gas_cylinder_manager,1,0,0,0

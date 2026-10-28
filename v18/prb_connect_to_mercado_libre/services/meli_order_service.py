@@ -12,10 +12,8 @@ class MeliOrderService(models.AbstractModel):
 
     def sync_orders(self, account, date_from=None, date_to=None):
         account.ensure_one()
-        #now = fields.Datetime.now()
-        #date_to = date_to or now
-
-
+        # now = fields.Datetime.now()
+        # date_to = date_to or now
         params = {
             "seller": account.meli_user_id,
             "order.date_last_updated.from": date_from,
@@ -24,18 +22,11 @@ class MeliOrderService(models.AbstractModel):
             "limit": 50,
             "offset": 0,
         }
-        print("params", params)
-        raise UserError('dddddd')
+        # raise UserError('dddddd')
         api = self.env["meli.service"]
-
         total_processed = 0
-
         while True:
-            data = api.get(
-                account,
-                "/orders/search",
-                params=params,
-            )
+            data = api.get(account, "/orders/search", params=params, )
             '''
             #---------------------------------------- OPCIONAL PARA REVISAR  ----------------------------
             # 1. Obtener el usuario propietario del access token
@@ -72,14 +63,8 @@ class MeliOrderService(models.AbstractModel):
             print("PUBLICACIONES", items_data)
             #----------------------------------------------------------------------------
             '''
-            print("data", data)
             results = data.get("results", [])
-
-            print("results", results)
-
             for order_data in results:
-                print("order_data", order_data)
-
                 self._process_order(account, order_data)
                 # raise UserError('STOPPPP')
                 total_processed += 1
@@ -88,18 +73,13 @@ class MeliOrderService(models.AbstractModel):
             total = paging.get("total", 0)
             offset = paging.get("offset", params["offset"])
             limit = paging.get("limit", params["limit"])
-
             next_offset = offset + limit
-
             if not results or next_offset >= total:
                 break
-
             params["offset"] = next_offset
-
         account.sudo().write({
             "last_order_sync": date_to,
         })
-
         return {
             "total_processed": total_processed,
             "date_from": date_from,
@@ -276,43 +256,29 @@ class MeliOrderService(models.AbstractModel):
         Crea o actualiza la orden local junto con sus productos y pagos.
         """
         order_id = str(order_data.get("id") or "")
-
         if not order_id:
             return False
-
-        order = self.env["meli.order"].search([
-            ("account_id", "=", account.id),
-            ("meli_order_id", "=", order_id),
-        ], limit=1)
-
+        order = self.env["meli.order"].search([("account_id", "=", account.id), ("meli_order_id", "=", order_id), ],
+                                              limit=1)
         vals = self._prepare_order_vals(account=account, order_data=order_data, )
-
         line_commands = [(5, 0, 0)]
-
         for order_item in order_data.get("order_items") or []:
             line_vals = self._prepare_order_line_vals(order_item)
-
             if line_vals.get("item_id"):
                 line_commands.append((0, 0, line_vals))
-
         payment_commands = [(5, 0, 0)]
-
         for payment_data in order_data.get("payments") or []:
             payment_vals = self._prepare_payment_vals(payment_data)
-
             if payment_vals.get("payment_id"):
                 payment_commands.append((0, 0, payment_vals))
-
         vals.update({
             "line_ids": line_commands,
             "payment_ids": payment_commands,
         })
-
         if order:
             order.write(vals)
         else:
             order = self.env["meli.order"].create(vals)
-
         return order
 
     def _prepare_order_vals(self, account, order_data):
@@ -337,7 +303,7 @@ class MeliOrderService(models.AbstractModel):
             "billing_info_id": str(
                 billing_info_data.get("id") or ""
             ),
-            #"site_id": account.site_id,
+            # "site_id": account.site_id,
 
             "seller_id": str(seller_data.get("id") or ""),
             "seller_nickname": seller_data.get("nickname"),

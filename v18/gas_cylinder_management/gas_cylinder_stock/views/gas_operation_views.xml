@@ -1,0 +1,89 @@
+
+<odoo>
+    <record id="view_gas_operation_list" model="ir.ui.view">
+        <field name="name">gas.cylinder.operation.list</field>
+        <field name="model">gas.cylinder.operation</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="operation_type"/>
+                <field name="partner_id"/>
+                <field name="company_id"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_gas_operation_form" model="ir.ui.view">
+        <field name="name">gas.cylinder.operation.form</field>
+        <field name="model">gas.cylinder.operation</field>
+        <field name="arch" type="xml">
+            <form string="Operación de gases">
+                <header>
+                    <button name="action_ready"
+                            type="object"
+                            string="Preparar"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+
+                    <button name="action_cancel"
+                            type="object"
+                            string="Cancelar"
+                            invisible="state not in ('draft', 'ready')"/>
+
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,ready,done"/>
+                </header>
+
+                <sheet>
+                    <group>
+                        <group string="Información general">
+                            <field name="name"/>
+                            <field name="operation_type"/>
+                            <field name="partner_id"/>
+                            <field name="company_id"/>
+                            <field name="config_id"
+                                   domain="[('operation_type', '=', operation_type), ('company_id', '=', company_id)]"/>
+                        </group>
+
+                        <group string="Transferencias">
+                            <field name="outgoing_picking_id"
+                                   readonly="1"/>
+                            <field name="return_picking_id"
+                                   readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Cilindros">
+                            <field name="line_ids"
+                                   readonly="state != 'draft'">
+                                <list editable="bottom">
+                                    <field name="cylinder_id"/>
+                                    <field name="gas_product_id"/>
+                                    <field name="quantity"/>
+                                    <field name="quantity_received"/>
+                                    <field name="lot_supplier"/>
+                                    <field name="code_supplier"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Documentos">
+                            <field name="picking_ids"
+                                   widget="many2many_tags"
+                                   readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_gas_operations" model="ir.actions.act_window">
+        <field name="name">Operaciones de gases</field>
+        <field name="res_model">gas.cylinder.operation</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

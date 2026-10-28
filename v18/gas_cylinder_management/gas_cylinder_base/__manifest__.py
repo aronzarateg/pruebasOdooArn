@@ -1,0 +1,19 @@
+{
+    'name': 'Gas & Cylinder Management - Base',
+    'version': '18.0.1.0.0',
+    'category': 'Inventory/Inventory',
+    'summary': 'Cylinder registry and gas product classification',
+    'license': 'LGPL-3',
+    'depends': ['stock'],
+    'data': [
+        'security/gas_security.xml',
+        'security/ir.model.access.csv',
+        'views/gas_product_views.xml',
+        'views/gas_cylinder_views.xml',
+        'views/gas_lot_views.xml',
+        'views/gas_menu.xml',
+        'views/gas_content_views.xml',
+    ],
+    'application': True,
+    'installable': True,
+}

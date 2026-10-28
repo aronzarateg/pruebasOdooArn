@@ -1,0 +1,28 @@
+<odoo>
+    <menuitem id="menu_gas_root"
+              name="Gases y Cilindros"
+              sequence="45"
+              groups="gas_cylinder_base.group_gas_cylinder_user"
+              web_icon="gas_cylinder_base,static/description/icon.png"/>
+
+    <menuitem id="menu_gas_cylinders"
+              name="Cilindros"
+              parent="menu_gas_root"
+              action="action_gas_cylinders"
+              sequence="10"/>
+    <menuitem id="menu_gas_configuration"
+              name="Configuración"
+              parent="menu_gas_root"
+              sequence="90"
+              groups="gas_cylinder_base.group_gas_cylinder_manager"/>
+    <menuitem id="menu_gas_products"
+              name="Productos de gases"
+              parent="menu_gas_configuration"
+              action="action_gas_products"
+              sequence="10"/>
+    <menuitem id="menu_gas_lots"
+              name="Series y datos de proveedor"
+              parent="menu_gas_configuration"
+              action="action_gas_lots"
+              sequence="20"/>
+</odoo>

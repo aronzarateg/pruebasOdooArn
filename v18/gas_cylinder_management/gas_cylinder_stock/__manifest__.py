@@ -5,6 +5,7 @@
     'depends': [
         'gas_cylinder_base',
         'stock',
+        'mail',
     ],
     'data': [
         'security/ir.model.access.csv',

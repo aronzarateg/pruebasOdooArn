@@ -1,54 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <record id="view_gas_cylinder_list" model="ir.ui.view">
         <field name="name">gas.cylinder.list</field>
         <field name="model">gas.cylinder</field>
         <field name="arch" type="xml">
-            <list string="Cylinders">
+            <list string="Cilindros">
                 <field name="serial_number"/>
                 <field name="product_id"/>
+                <field name="lot_id"/>
                 <field name="capacity"/>
                 <field name="ownership_type"/>
-                <field name="owner_id"/>
-                <field name="lot_id"/>
-                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="owner_id" optional="hide"/>
+                <field name="company_id"
+                       groups="base.group_multi_company"/>
             </list>
         </field>
     </record>
+
     <record id="view_gas_cylinder_form" model="ir.ui.view">
         <field name="name">gas.cylinder.form</field>
         <field name="model">gas.cylinder</field>
         <field name="arch" type="xml">
-            <form string="Cylinder">
+            <form string="Cilindro">
                 <sheet>
-                    <group>
+
+                    <group string="Información del cilindro">
                         <group>
-                            <field name="serial_number"/>
-                            <field name="product_id"/>
+                            <field name="product_id"
+                                   options="{'no_create': True}"/>
+
                             <field name="lot_id"
-                                   domain="[('product_id', '=', product_id)]"/>
+                                   domain="[('product_id', '=', product_id), ('company_id', 'in', [False, company_id])]"
+                                   options="{'no_create': True, 'no_create_edit': True}"/>
+
+                            <field name="serial_number"
+                                   readonly="lot_id != False"/>
+
                             <field name="capacity"/>
                         </group>
+
                         <group>
                             <field name="ownership_type"/>
-                            <field name="owner_id" invisible="ownership_type != 'third_party'"/>
+
+                            <field name="owner_id"
+                                   invisible="ownership_type != 'third_party'"
+                                   required="ownership_type == 'third_party'"/>
+
                             <field name="company_id"/>
+
                             <field name="active"/>
                         </group>
                     </group>
+
                     <notebook>
-                        <page string="Notes">
+                        <page string="Observaciones">
                             <field name="notes"/>
                         </page>
                     </notebook>
+
                 </sheet>
             </form>
         </field>
     </record>
+
     <record id="action_gas_cylinders" model="ir.actions.act_window">
-        <field name="name">Cylinders</field>
+        <field name="name">Cilindros</field>
         <field name="res_model">gas.cylinder</field>
         <field name="view_mode">list,form</field>
         <field name="view_ids"
-               eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_gas_cylinder_list')}), (0, 0, {'view_mode': 'form', 'view_id': ref('view_gas_cylinder_form')})]"/>
+               eval="[(5, 0, 0),
+                      (0, 0, {'view_mode': 'list',
+                              'view_id': ref('view_gas_cylinder_list')}),
+                      (0, 0, {'view_mode': 'form',
+                              'view_id': ref('view_gas_cylinder_form')})]"/>
     </record>
+
 </odoo>

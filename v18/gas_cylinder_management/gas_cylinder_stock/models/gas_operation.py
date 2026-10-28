@@ -1,5 +1,5 @@
 from odoo import fields, models, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare
 import inspect
 
@@ -7,10 +7,12 @@ import inspect
 class GasOperation(models.Model):
     _name = 'gas.cylinder.operation'
     _description = 'Gas Cylinder Business Operation'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'id desc'
 
-    name = fields.Char(default='Nuevo', required=True, copy=False,string='N.º de operación' )
-    company_id = fields.Many2one('res.company', string="Empresa",required=True, default=lambda self: self.env.company, )
+    name = fields.Char(default='Nuevo', required=True, copy=False, string='N.º de operación')
+    company_id = fields.Many2one('res.company', string="Empresa", required=True,
+                                 default=lambda self: self.env.company, )
     partner_id = fields.Many2one('res.partner', string='Proveedor / Cliente', required=True, copy=False)
     operation_type = fields.Selection([
         ('supplier_refill', 'Reposición por parte del proveedor'),
@@ -22,7 +24,7 @@ class GasOperation(models.Model):
         ('transfer', 'Transferir'),
         ('adjustment', 'Ajuste'),
     ], required=True, string='Tipo de operación')
-    config_id = fields.Many2one('gas.cylinder.operation.config',string="Configuración logística" )
+    config_id = fields.Many2one('gas.cylinder.operation.config', string="Configuración logística")
     line_ids = fields.One2many('gas.cylinder.operation.line', 'operation_id', )
     picking_ids = fields.Many2many('stock.picking', string='Related Pickings', copy=False, )
     outgoing_picking_id = fields.Many2one('stock.picking', string='Transferencia de envío', copy=False, readonly=True, )
@@ -32,7 +34,7 @@ class GasOperation(models.Model):
         ('ready', 'Ready'),
         ('done', 'Done'),
         ('cancel', 'Cancelled'),
-    ], default='draft', required=True)
+    ], default='draft', required=True, tracking=True, )
 
     def _check_supplier_refill_outgoing(self):
         self.ensure_one()
@@ -397,6 +399,47 @@ class GasOperation(models.Model):
 
         return picking
 
+    def _check_refill_capacity(self):
+        Content = self.env['gas.cylinder.content']
+
+        for rec in self:
+            if rec.operation_type != 'supplier_refill':
+                continue
+
+            for line in rec.line_ids:
+                cylinder = line.cylinder_id
+
+                if not cylinder:
+                    continue
+
+                balances = Content.search([
+                    ('cylinder_id', '=', cylinder.id),
+                ])
+
+                current = sum(balances.mapped('quantity'))
+                available = max(cylinder.capacity - current, 0.0)
+
+                if float_compare(
+                        line.quantity,
+                        available,
+                        precision_digits=3,
+                ) > 0:
+                    raise UserError(
+                        'No se puede preparar la recarga.\n\n'
+                        'Cilindro: %s\n'
+                        'Capacidad máxima: %.3f m³\n'
+                        'Contenido actual: %.3f m³\n'
+                        'Espacio disponible: %.3f m³\n'
+                        'Recarga planificada: %.3f m³'
+                        % (
+                            cylinder.serial_number,
+                            cylinder.capacity,
+                            current,
+                            available,
+                            line.quantity,
+                        )
+                    )
+
     def action_ready(self):
         for rec in self:
             if rec.state != 'draft':
@@ -411,6 +454,24 @@ class GasOperation(models.Model):
                 ))
 
             if rec.operation_type == 'supplier_refill':
+                # Validar antes de generar transferencias.
+                for line in rec.line_ids:
+                    if float_compare(
+                            line.quantity,
+                            0.0,
+                            precision_digits=3,
+                    ) <= 0:
+                        raise UserError(_(
+                            'No se puede preparar la recarga.\n\n'
+                            'Cilindro: %(serial)s\n'
+                            'Gas planificado: %(quantity).3f m³\n\n'
+                            'La cantidad planificada debe ser mayor que cero.'
+                        ) % {
+                                            'serial': line.cylinder_id.serial_number,
+                                            'quantity': line.quantity,
+                                        })
+
+                rec._check_refill_capacity()
                 rec._create_outgoing_picking()
 
             rec.state = 'ready'
@@ -590,6 +651,13 @@ class GasOperation(models.Model):
                 cylinder = line.cylinder_id
                 gas = line.gas_product_id
                 final_qty = line.quantity_received
+                print("final_qty", final_qty)
+
+                if float_compare(final_qty, 0.0, precision_digits=3, ) <= 0:
+                    raise UserError(_(
+                        'Debe registrar una cantidad de gas recibido '
+                        'mayor que cero para el cilindro %s.'
+                    ) % cylinder.serial_number)
 
                 if cylinder.company_id != rec.company_id:
                     raise UserError(_(
@@ -657,26 +725,54 @@ class GasOperation(models.Model):
                 previous_qty = balance.quantity
                 previous_available = balance.available_quantity
 
-                physical_delta = final_qty - previous_qty
-                available_delta = final_qty - previous_available
+                received_qty = line.quantity_received
+
+                # La cantidad recibida representa gas adicional.
+                final_qty = previous_qty + received_qty
+                final_available = previous_available + received_qty
+
+                # Validar la capacidad considerando el contenido anterior.
+                if float_compare(
+                        final_qty,
+                        cylinder.capacity,
+                        precision_digits=3,
+                ) > 0:
+                    raise UserError(_(
+                        'La recarga de %(received).3f m³ supera la capacidad '
+                        'del cilindro %(serial)s. '
+                        'Contenido anterior: %(previous).3f m³. '
+                        'Capacidad máxima: %(capacity).3f m³.'
+                    ) % {
+                                        'received': received_qty,
+                                        'serial': cylinder.serial_number,
+                                        'previous': previous_qty,
+                                        'capacity': cylinder.capacity,
+                                    })
 
                 balance.with_context(
                     gas_content_posting=True
                 ).write({
                     'quantity': final_qty,
-                    'available_quantity': final_qty,
+                    'available_quantity': final_available,
                 })
 
                 movements.append({
                     'cylinder_id': cylinder.id,
                     'gas_product_id': gas.id,
                     'operation_id': rec.id,
-                    'quantity_delta': physical_delta,
-                    'available_delta': available_delta,
+                    'quantity_delta': received_qty,
+                    'available_delta': received_qty,
                     'note': (
                                 'Recarga proveedor %s - '
-                                'Contenido final: %.3f m3'
-                            ) % (rec.display_name, final_qty),
+                                'Contenido anterior: %.3f m³ - '
+                                'Gas recibido: %.3f m³ - '
+                                'Contenido final: %.3f m³'
+                            ) % (
+                                rec.display_name,
+                                previous_qty,
+                                received_qty,
+                                final_qty,
+                            ),
                 })
 
             Ledger.with_context(
@@ -963,3 +1059,56 @@ class GasOperation(models.Model):
                     ))
 
         return super().create(vals_list)
+
+    def write(self, vals):
+        protected_fields = {
+            'name',
+            'operation_type',
+            'partner_id',
+            'company_id',
+            'config_id',
+            'line_ids',
+            'picking_ids',
+            'outgoing_picking_id',
+            'return_picking_id',
+            'state',
+        }
+
+        if protected_fields.intersection(vals):
+            if any(operation.state == 'done' for operation in self):
+                raise ValidationError(_(
+                    'No se pueden modificar los datos de una '
+                    'operación de gases finalizada.'
+                ))
+
+        return super().write(vals)
+
+    def unlink(self):
+        Ledger = self.env['gas.cylinder.content.move']
+
+        for operation in self:
+            if operation.state == 'done':
+                raise ValidationError(_(
+                    'No se puede eliminar la operación %s '
+                    'porque está finalizada.'
+                ) % operation.display_name)
+
+            if (
+                    operation.picking_ids
+                    or operation.outgoing_picking_id
+                    or operation.return_picking_id
+            ):
+                raise ValidationError(_(
+                    'No se puede eliminar la operación %s '
+                    'porque tiene transferencias asociadas.'
+                ) % operation.display_name)
+
+            if Ledger.search_count([
+                ('operation_id', '=', operation.id),
+            ]):
+                raise ValidationError(_(
+                    'No se puede eliminar la operación %s '
+                    'porque tiene movimientos en el kardex.'
+                ) % operation.display_name)
+
+        return super().unlink()

@@ -4,27 +4,47 @@ from odoo.exceptions import ValidationError
 
 class GasCylinder(models.Model):
     _name = 'gas.cylinder'
-    _description = 'Physical Gas Cylinder'
+    _description = 'Cilindro físico de gas'
     _order = 'id desc'
     _rec_name = 'serial_number'
 
-    active = fields.Boolean(default=True)
-    serial_number = fields.Char(string='Physical Serial', required=True, index=True)
-    product_id = fields.Many2one('product.product', string='Cylinder Product', required=True, ondelete='restrict')
-    lot_id = fields.Many2one('stock.lot', string='Odoo Serial/Lot', ondelete='restrict', copy=False)
+    active = fields.Boolean(string='Activo', default=True, )
+
+    serial_number = fields.Char(string='Número de serie físico', index=True, )
+
+    product_id = fields.Many2one('product.product', string='Producto del cilindro', required=True, ondelete='restrict',
+                                 domain="[('product_tmpl_id.gas_product_type', '=', 'cylinder')]", )
+
+    lot_id = fields.Many2one('stock.lot', string='Número de serie / lote de Odoo', ondelete='restrict', copy=False,
+                             domain="[('product_id', '=', product_id)]", )
+
     ownership_type = fields.Selection(
-        [('own', 'Company-owned'), ('third_party', 'Third-party owned')],
-        required=True, default='own', string='Ownership',
-    )
-    owner_id = fields.Many2one('res.partner', string='External Owner', ondelete='restrict')
-    company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
-    capacity = fields.Float(string='Capacity (m3)', digits=(16, 3), required=True)
-    notes = fields.Text()
+        [
+            ('own', 'Propio de la empresa'),
+            ('third_party', 'Propiedad de terceros'),
+        ],
+        string='Tipo de propiedad', required=True, default='own', )
+
+    owner_id = fields.Many2one('res.partner', string='Propietario externo', ondelete='restrict', )
+
+    company_id = fields.Many2one('res.company', string='Empresa', required=True,
+                                 default=lambda self: self.env.company, )
+
+    capacity = fields.Float(string='Capacidad (m³)', digits=(16, 3), required=True, )
+
+    notes = fields.Text(string='Observaciones')
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
-        if self.product_id and self.product_id.product_tmpl_id.gas_product_type == 'cylinder':
-            self.capacity = self.product_id.product_tmpl_id.cylinder_capacity
+        if not self.product_id:
+            self.lot_id = False
+            return
+
+        if (self.product_id.product_tmpl_id.gas_product_type == 'cylinder'):
+            self.capacity = (self.product_id.product_tmpl_id.cylinder_capacity)
+        if (self.lot_id and self.lot_id.product_id != self.product_id):
+            self.lot_id = False
+            self.serial_number = False
 
     @api.onchange('lot_id')
     def _onchange_lot_id(self):
@@ -32,31 +52,136 @@ class GasCylinder(models.Model):
             self.serial_number = self.lot_id.name
             self.product_id = self.lot_id.product_id
 
-    @api.constrains('capacity', 'product_id', 'lot_id', 'serial_number', 'ownership_type', 'owner_id', 'company_id')
+    @api.constrains(
+        'capacity',
+        'product_id',
+        'lot_id',
+        'serial_number',
+        'ownership_type',
+        'owner_id',
+        'company_id',
+    )
     def _check_cylinder(self):
         for rec in self:
             if rec.capacity <= 0:
-                raise ValidationError(_('Cylinder capacity must be positive.'))
-            if rec.product_id.product_tmpl_id.gas_product_type != 'cylinder':
-                raise ValidationError(_('The selected product must be classified as Cylinder.'))
+                raise ValidationError(
+                    _('La capacidad del cilindro debe ser mayor que cero.')
+                )
+
+            if (
+                    rec.product_id.product_tmpl_id.gas_product_type
+                    != 'cylinder'
+            ):
+                raise ValidationError(
+                    _('El producto debe estar clasificado como cilindro.')
+                )
+
             if rec.product_id.tracking != 'serial':
-                raise ValidationError(_('The cylinder product must use serial tracking.'))
+                raise ValidationError(
+                    _('El producto debe tener seguimiento por número de serie.')
+                )
+
             if rec.ownership_type == 'own' and not rec.lot_id:
-                raise ValidationError(_('Company-owned cylinders require an Odoo serial/lot.'))
+                raise ValidationError(
+                    _('Los cilindros propios requieren un número de serie de Odoo.')
+                )
+
             if rec.ownership_type == 'third_party' and not rec.owner_id:
-                raise ValidationError(_('Third-party cylinders require an external owner.'))
+                raise ValidationError(
+                    _('Debe seleccionar el propietario externo.')
+                )
+
             if rec.lot_id:
-                #if rec.lot_id.product_id != rec.product_id or rec.lot_id.company_id != rec.company_id:
                 if rec.lot_id.product_id != rec.product_id:
-                    raise ValidationError(_('Lot product and company must match the cylinder.'))
-                if rec.serial_number != rec.lot_id.name:
-                    raise ValidationError(_('Physical serial must match the Odoo serial.'))
-                if self.search_count([('id', '!=', rec.id), ('lot_id', '=', rec.lot_id.id)]):
-                    raise ValidationError(_('This Odoo serial is already linked to another cylinder.'))
+                    raise ValidationError(
+                        _('El producto del lote no coincide con el cilindro.')
+                    )
+
+                if (
+                        rec.lot_id.company_id
+                        and rec.lot_id.company_id != rec.company_id
+                ):
+                    raise ValidationError(
+                        _('La empresa del lote no coincide con la del cilindro.')
+                    )
+
+                if self.search_count([
+                    ('id', '!=', rec.id),
+                    ('lot_id', '=', rec.lot_id.id),
+                ]):
+                    raise ValidationError(
+                        _('Esta serie ya está vinculada a otro cilindro.')
+                    )
+
             if self.search_count([
-                ('id', '!=', rec.id), ('company_id', '=', rec.company_id.id),
-                ('product_id', '=', rec.product_id.id), ('serial_number', '=', rec.serial_number),
+                ('id', '!=', rec.id),
+                ('company_id', '=', rec.company_id.id),
+                ('product_id', '=', rec.product_id.id),
+                ('serial_number', '=', rec.serial_number),
                 ('ownership_type', '=', rec.ownership_type),
-                ('owner_id', '=', rec.owner_id.id if rec.ownership_type == 'third_party' else False),
+                (
+                        'owner_id',
+                        '=',
+                        rec.owner_id.id
+                        if rec.ownership_type == 'third_party'
+                        else False,
+                ),
             ]):
-                raise ValidationError(_('Duplicate physical cylinder identity.'))
+                raise ValidationError(
+                    _('Ya existe un cilindro con esta identificación.')
+                )
+
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            lot_id = vals.get('lot_id')
+
+            if lot_id:
+                lot = self.env['stock.lot'].browse(lot_id).exists()
+
+                if not lot:
+                    raise ValidationError(
+                        _('El número de serie seleccionado no existe.')
+                    )
+
+                # Sincronizar los datos del lote con el cilindro.
+                vals['serial_number'] = lot.name
+                vals['product_id'] = lot.product_id.id
+
+                print(
+                    '[GAS CYLINDER CREATE] '
+                    f'Lote: {lot.name} | '
+                    f'Serie: {vals["serial_number"]}',
+                    flush=True,
+                )
+
+        return super().create(vals_list)
+
+    def write(self, vals):
+        vals = vals.copy()
+
+        if 'lot_id' in vals:
+            lot_id = vals.get('lot_id')
+
+            if lot_id:
+                lot = self.env['stock.lot'].browse(lot_id).exists()
+
+                if not lot:
+                    raise ValidationError(
+                        _('El número de serie seleccionado no existe.')
+                    )
+
+                vals['serial_number'] = lot.name
+                vals['product_id'] = lot.product_id.id
+
+                print(
+                    '[GAS CYLINDER WRITE] '
+                    f'IDs: {self.ids} | '
+                    f'Lote: {lot.name} | '
+                    f'Serie: {vals["serial_number"]}',
+                    flush=True,
+                )
+
+        return super().write(vals)
+

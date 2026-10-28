@@ -37,7 +37,9 @@
                             class="btn-primary"
                             confirm="¿Desea finalizar la recarga y registrar el contenido de gas en el kardex?"
                             invisible="state != 'ready'
-                       or operation_type != 'supplier_refill'"/>
+                               or operation_type != 'supplier_refill'
+                               or not outgoing_picking_id
+                               or not return_picking_id"/>
                     <button name="action_cancel"
                             type="object"
                             string="Cancelar"
@@ -49,11 +51,11 @@
                 <sheet>
                     <group>
                         <group string="Información general">
-                            <field name="name"/>
-                            <field name="operation_type"/>
-                            <field name="partner_id"/>
-                            <field name="company_id"/>
-                            <field name="config_id"
+                            <field name="name" readonly="1"/>
+                            <field name="operation_type" readonly="state != 'draft'"/>
+                            <field name="partner_id" readonly="state != 'draft'"/>
+                            <field name="company_id" readonly="state != 'draft'"/>
+                            <field name="config_id" readonly="state != 'draft'"
                                    domain="[('operation_type', '=', operation_type), ('company_id', '=', company_id)]"/>
                         </group>
 
@@ -68,13 +70,29 @@
                     <notebook>
                         <page string="Cilindros">
                             <field name="line_ids" readonly="state in ('done', 'cancel')">
-                                <list editable="bottom" create="0" delete="0">
-                                    <field name="cylinder_id" readonly="1"/>
-                                    <field name="gas_product_id" readonly="1"/>
-                                    <field name="quantity" readonly="1"/>
-                                    <field name="quantity_received" readonly="parent.state != 'ready'"/>
-                                    <field name="lot_supplier" readonly="parent.state != 'ready'"/>
-                                    <field name="code_supplier" readonly="parent.state != 'ready'"/>
+                                <list editable="bottom">
+                                    <field name="cylinder_id" string="Cilindro" readonly="parent.state != 'draft'"/>
+
+                                    <field name="gas_product_id"
+                                           string="Producto de gas"
+                                           domain="[('product_tmpl_id.gas_product_type', '=', 'gas')]"
+                                           readonly="parent.state != 'draft'"
+                                           required="1"/>
+
+                                    <field name="quantity" string="Gas planificado (m³)"
+                                           readonly="parent.state != 'draft'"/>
+                                    <field name="quantity_received" string="Gas recibido (m³)"
+                                           readonly="parent.state != 'ready'"/>
+                                    <field name="lot_supplier" string="Lote del proveedor"
+                                           readonly="parent.state not in ('draft', 'ready')"/>
+                                    <field name="code_supplier" string="Código del proveedor"
+                                           readonly="parent.state not in ('draft', 'ready')"/>
+                                    <field name="cylinder_capacity" readonly="1"/>
+                                    <field name="current_content" readonly="1"/>
+                                    <field name="available_capacity" readonly="1"/>
+                                    <field name="is_full"
+                                           widget="boolean_toggle"
+                                           readonly="1"/>
                                 </list>
                             </field>
                         </page>
@@ -83,6 +101,7 @@
                         </page>
                     </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

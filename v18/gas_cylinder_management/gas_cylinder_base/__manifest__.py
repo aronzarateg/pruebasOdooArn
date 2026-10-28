@@ -13,6 +13,7 @@
         'views/gas_lot_views.xml',
         'views/gas_menu.xml',
         'views/gas_content_views.xml',
+        'views/gas_stock_move_line_views.xml',
     ],
     'application': True,
     'installable': True,

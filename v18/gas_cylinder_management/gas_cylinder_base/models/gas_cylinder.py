@@ -46,6 +46,48 @@ class GasCylinder(models.Model):
             'ni modifica los saldos de gas.'
         ),
     )
+    # ---------------------------------------------------------
+    # CONTENIDO ACTUAL E HISTORIAL DEL CILINDRO
+    # ---------------------------------------------------------
+
+    content_ids = fields.One2many(
+        'gas.cylinder.content',
+        'cylinder_id',
+        string='Contenido actual',
+        readonly=True,
+    )
+
+    content_move_ids = fields.One2many(
+        'gas.cylinder.content.move',
+        'cylinder_id',
+        string='Historial de movimientos',
+        readonly=True,
+    )
+
+    content_total_quantity = fields.Float(
+        string='Contenido total (m³)',
+        compute='_compute_content_summary',
+        digits=(16, 3),
+    )
+
+    content_available_quantity = fields.Float(
+        string='Gas disponible (m³)',
+        compute='_compute_content_summary',
+        digits=(16, 3),
+    )
+
+    content_free_capacity = fields.Float(
+        string='Capacidad libre (m³)',
+        compute='_compute_content_summary',
+        digits=(16, 3),
+    )
+
+    content_occupation_pct = fields.Float(
+        string='Ocupación (%)',
+        compute='_compute_content_summary',
+        digits=(16, 2),
+    )
+
 
     @api.constrains('allowed_gas_product_ids')
     def _check_allowed_gas_products(self):
@@ -60,6 +102,34 @@ class GasCylinder(models.Model):
                     'Solo se pueden asignar productos '
                     'clasificados como gas.'
                 ))
+
+    @api.depends(
+        'capacity',
+        'content_ids.quantity',
+        'content_ids.available_quantity',
+    )
+    def _compute_content_summary(self):
+        for cylinder in self:
+            total = sum(
+                cylinder.content_ids.mapped('quantity')
+            )
+            available = sum(
+                cylinder.content_ids.mapped('available_quantity')
+            )
+            capacity = cylinder.capacity
+
+            cylinder.content_total_quantity = round(total, 3)
+            cylinder.content_available_quantity = round(
+                available, 3
+            )
+            cylinder.content_free_capacity = round(
+                max(capacity - total, 0.0), 3
+            )
+            cylinder.content_occupation_pct = (
+                round(total / capacity * 100.0, 2)
+                if capacity > 0
+                else 0.0
+            )
 
     @api.onchange('product_id')
     def _onchange_product_id(self):

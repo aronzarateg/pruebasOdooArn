@@ -20,7 +20,7 @@
                 <field
                         name="gas_refill_cylinder_id"
                         string="Cilindro / serie"
-                        optional="show"
+                        optional="show" column_invisible="True"
                         readonly="1"/>
 
                 <field

@@ -1,21 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <record id="view_gas_content_list" model="ir.ui.view">
         <field name="name">gas.cylinder.content.list</field>
         <field name="model">gas.cylinder.content</field>
         <field name="arch" type="xml">
-            <list create="0" edit="0" delete="0">
-                <field name="cylinder_id"/>
-                <field name="gas_product_id"/>
-                <field name="quantity"/>
-                <field name="available_quantity"/>
-                <field name="uom_id"/>
+            <list
+                    string="Contenido por cilindro"
+                    create="0"
+                    edit="0"
+                    delete="0"
+                    default_order="cylinder_id,id">
+
+                <field name="cylinder_id" string="Cilindro / serie"/>
+
+                <field name="gas_product_id" string="Gas"/>
+
+                <field name="quantity" string="Cantidad física"/>
+
+                <field name="available_quantity" string="Disponible"/>
+
+                <field name="uom_id" string="UdM" optional="hide"/>
+
+                <field name="cylinder_capacity" string="Capacidad (m³)"/>
+
+                <field name="cylinder_total_quantity" string="Contenido total (m³)"/>
+
+                <field name="cylinder_free_capacity" string="Capacidad libre (m³)"/>
+
+                <field name="cylinder_occupation_pct" string="Ocupación (%)" widget="percentage"/>
+
             </list>
+
         </field>
     </record>
-    <record id="action_gas_content" model="ir.actions.act_window">
+
+    <record id="action_gas_content"
+            model="ir.actions.act_window">
         <field name="name">Contenido por cilindro</field>
         <field name="res_model">gas.cylinder.content</field>
         <field name="view_mode">list</field>
     </record>
-    <menuitem id="menu_gas_content" name="Contenido" parent="menu_gas_root" action="action_gas_content" sequence="20"/>
+
+    <menuitem
+            id="menu_gas_content"
+            name="Contenido"
+            parent="menu_gas_root"
+            action="action_gas_content"
+            sequence="20"/>
+
 </odoo>

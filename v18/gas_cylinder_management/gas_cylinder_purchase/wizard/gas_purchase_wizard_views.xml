@@ -27,7 +27,9 @@
 
                         <field name="cylinder_id"
                                options="{'no_create': True}"/>
-
+                        <field name="cylinder_capacity" readonly="1"/>
+                        <field name="cylinder_current_quantity" readonly="1"/>
+                        <field name="cylinder_free_capacity" readonly="1"/>
 
                         <field name="allowed_gas_product_ids"
                                invisible="1"/>

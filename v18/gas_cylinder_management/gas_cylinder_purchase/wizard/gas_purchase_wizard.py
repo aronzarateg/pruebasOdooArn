@@ -215,11 +215,9 @@ class GasPurchaseWizard(models.TransientModel):
 
         # Esta suma presupone que todos los gases
         # utilizan una unidad comparable con m³.
-        if total_quantity > cylinder.capacity + 0.001:
-            raise UserError(_(
-                'La cantidad total supera la capacidad '
-                'del cilindro (%s m³).'
-            ) % cylinder.capacity)
+        self._check_cylinder_free_capacity(
+            total_quantity
+        )
 
         original_sequence = source.sequence
 
@@ -313,6 +311,106 @@ class GasPurchaseWizard(models.TransientModel):
             'target': 'current',
         }
 
+    cylinder_capacity = fields.Float(
+        string='Capacidad del cilindro (m³)',
+        related='cylinder_id.capacity',
+        readonly=True,
+    )
+
+    cylinder_current_quantity = fields.Float(
+        string='Contenido actual (m³)',
+        compute='_compute_cylinder_content_info',
+        digits=(16, 3),
+    )
+
+    cylinder_free_capacity = fields.Float(
+        string='Capacidad libre (m³)',
+        compute='_compute_cylinder_content_info',
+        digits=(16, 3),
+    )
+
+    @api.depends('cylinder_id', 'cylinder_id.capacity')
+    def _compute_cylinder_content_info(self):
+        Content = self.env['gas.cylinder.content']
+
+        for wizard in self:
+            if not wizard.cylinder_id:
+                wizard.cylinder_current_quantity = 0.0
+                wizard.cylinder_free_capacity = 0.0
+                continue
+
+            balances = Content.search([
+                ('cylinder_id', '=', wizard.cylinder_id.id),
+            ])
+
+            total = sum(balances.mapped('quantity'))
+
+            wizard.cylinder_current_quantity = round(
+                total, 3
+            )
+
+            wizard.cylinder_free_capacity = round(
+                max(
+                    wizard.cylinder_id.capacity - total,
+                    0.0,
+                ),
+                3,
+            )
+
+    def _check_cylinder_free_capacity(self, incoming_qty):
+        self.ensure_one()
+
+        if not self.cylinder_id:
+            raise UserError(_(
+                'Seleccione primero un cilindro.'
+            ))
+
+        Content = self.env['gas.cylinder.content']
+
+        # Serializar las comprobaciones de capacidad.
+        self.env.cr.execute(
+            """
+            SELECT id
+            FROM gas_cylinder
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (self.cylinder_id.id,),
+        )
+
+        balances = Content.search([
+            ('cylinder_id', '=', self.cylinder_id.id),
+        ])
+
+        balances.invalidate_recordset([
+            'quantity',
+        ])
+
+        current = sum(balances.mapped('quantity'))
+        capacity = self.cylinder_id.capacity
+        free = max(capacity - current, 0.0)
+
+        if float_compare(
+            incoming_qty,
+            free,
+            precision_digits=3,
+        ) > 0:
+            raise UserError(_(
+                'La cantidad de gas supera la capacidad '
+                'libre del cilindro %(serial)s.\n\n'
+                'Capacidad total: %(capacity).3f m³\n'
+                'Contenido actual: %(current).3f m³\n'
+                'Capacidad libre: %(free).3f m³\n'
+                'Cantidad solicitada: %(requested).3f m³'
+            ) % {
+                'serial': self.cylinder_id.display_name,
+                'capacity': capacity,
+                'current': current,
+                'free': free,
+                'requested': incoming_qty,
+            })
+
+        return True
 
 class GasPurchaseWizardLine(models.TransientModel):
     _name = 'gas.purchase.wizard.line'

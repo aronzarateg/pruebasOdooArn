@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_gas_purchase_wizard_user,gas.purchase.wizard.user,model_gas_purchase_wizard,purchase.group_purchase_user,1,1,1,1
+access_gas_purchase_wizard_line_user,gas.purchase.wizard.line.user,model_gas_purchase_wizard_line,purchase.group_purchase_user,1,1,1,1
+

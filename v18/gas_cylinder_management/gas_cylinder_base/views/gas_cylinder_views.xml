@@ -54,6 +54,14 @@
                     </group>
 
                     <notebook>
+                        <page string="Gases compatibles">
+                            <group string="Productos de gas permitidos">
+                                <field name="allowed_gas_product_ids"
+                                       widget="many2many_tags"
+                                       domain="[('product_tmpl_id.gas_product_type', '=', 'gas')]"
+                                       options="{'no_create': True, 'no_create_edit': True}"/>
+                            </group>
+                        </page>
                         <page string="Observaciones">
                             <field name="notes"/>
                         </page>

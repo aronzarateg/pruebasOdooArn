@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_purchase_order_gas_line_inherit"
+            model="ir.ui.view">
+
+        <field name="name">purchase.order.form.gas.line</field>
+
+        <field name="model">purchase.order</field>
+
+        <field name="inherit_id"
+               ref="purchase.purchase_order_form"/>
+
+        <field name="arch" type="xml">
+
+            <xpath
+                    expr="//field[@name='order_line']/list/field[@name='product_id']"
+                    position="before">
+
+                <field
+                        name="gas_refill_cylinder_id"
+                        string="Cilindro / serie"
+                        optional="show"
+                        readonly="1"/>
+
+                <field
+                        name="gas_refill_reference"
+                        column_invisible="1"/>
+
+                <field
+                        name="gas_refill_source_line_id"
+                        column_invisible="1"/>
+
+                <field
+                        name="gas_can_select"
+                        column_invisible="1"/>
+
+            </xpath>
+
+            <xpath
+                    expr="//field[@name='order_line']/list/field[@name='product_id']"
+                    position="after">
+
+                <button
+                        name="action_select_gas"
+                        type="object"
+                        string="Seleccionar gas"
+                        icon="fa-flask"
+                        invisible="not gas_can_select"/>
+
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

@@ -33,6 +33,33 @@ class GasCylinder(models.Model):
     capacity = fields.Float(string='Capacidad (m³)', digits=(16, 3), required=True, )
 
     notes = fields.Text(string='Observaciones')
+    allowed_gas_product_ids = fields.Many2many(
+        comodel_name='product.product',
+        relation='gas_cylinder_allowed_gas_rel',
+        column1='cylinder_id',
+        column2='product_id',
+        string='Gases compatibles',
+        domain="[('product_tmpl_id.gas_product_type', '=', 'gas')]",
+        help=(
+            'Productos de gas que pueden asignarse a este cilindro. '
+            'Esta configuración no representa el contenido actual '
+            'ni modifica los saldos de gas.'
+        ),
+    )
+
+    @api.constrains('allowed_gas_product_ids')
+    def _check_allowed_gas_products(self):
+        for cylinder in self:
+            invalid_products = cylinder.allowed_gas_product_ids.filtered(
+                lambda product:
+                product.product_tmpl_id.gas_product_type != 'gas'
+            )
+
+            if invalid_products:
+                raise ValidationError(_(
+                    'Solo se pueden asignar productos '
+                    'clasificados como gas.'
+                ))
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
@@ -131,7 +158,6 @@ class GasCylinder(models.Model):
                     _('Ya existe un cilindro con esta identificación.')
                 )
 
-
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -184,4 +210,3 @@ class GasCylinder(models.Model):
                 )
 
         return super().write(vals)
-

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_gas_purchase_wizard_form"
+            model="ir.ui.view">
+
+        <field name="name">gas.purchase.wizard.form</field>
+
+        <field name="model">gas.purchase.wizard</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Seleccionar gas para cilindro">
+
+                <sheet>
+
+                    <group string="Referencia del cilindro">
+
+                        <field name="purchase_order_id"/>
+
+                        <field name="purchase_line_id"/>
+
+                        <field name="cylinder_product_id"/>
+
+                        <field name="company_id"
+                               invisible="1"/>
+
+                        <field name="cylinder_id"
+                               options="{'no_create': True}"/>
+
+
+                        <field name="allowed_gas_product_ids"
+                               invisible="1"/>
+
+                    </group>
+
+                    <group string="Gases compatibles">
+
+                        <field name="line_ids">
+
+                            <list editable="bottom">
+
+                                <field
+                                        name="allowed_gas_product_ids"
+                                        column_invisible="1"/>
+
+                                <field
+                                        name="gas_product_id"
+                                        options="{'no_create': True}"/>
+
+                                <field name="quantity"
+                                       sum="Total m³"/>
+
+                                <field name="uom_id"/>
+
+                                <field name="price_unit"/>
+
+                            </list>
+
+                        </field>
+
+                    </group>
+
+                </sheet>
+
+                <footer>
+
+                    <button
+                            name="action_add_gases"
+                            type="object"
+                            string="Agregar gases"
+                            class="btn-primary"/>
+
+                    <button
+                            string="Cancelar"
+                            special="cancel"
+                            class="btn-secondary"/>
+
+                </footer>
+
+            </form>
+
+        </field>
+    </record>
+
+</odoo>

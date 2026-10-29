@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gas_sale_wizard_form" model="ir.ui.view">
+        <field name="name">gas.sale.wizard.form</field>
+        <field name="model">gas.sale.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Seleccionar gases para venta">
+                <group string="Referencia comercial">
+                    <field name="sale_order_id" readonly="1"/>
+                    <field name="sale_line_id"
+                           invisible="not sale_line_id"/>
+                    <field name="cylinder_product_id"
+                           invisible="not cylinder_product_id"/>
+
+                    <field name="sell_cylinder"/>
+                    <field name="sale_mode" invisible="1"/>
+
+                    <field name="cylinder_id"
+                           domain="[('ownership_type', '=', 'own'),
+                                    ('active', '=', True)]"
+                           options="{'no_create': True}"/>
+                </group>
+
+                <group string="Contenido registrado">
+                    <field name="capacity" readonly="1"/>
+                    <field name="current_quantity" readonly="1"/>
+                    <field name="free_capacity" readonly="1"/>
+                </group>
+
+                <group string="Gases disponibles">
+
+                    <field name="line_ids" nolabel="1">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="gas_product_id"
+                                   readonly="1"
+                                   force_save="1"/>
+
+                            <field name="available_quantity"
+                                   readonly="1"
+                                   force_save="1"/>
+
+                            <field name="quantity"
+                                   readonly="parent.sell_cylinder"
+                                   force_save="1"/>
+
+                            <field name="uom_id"
+                                   readonly="1"/>
+
+                            <field name="price_unit"/>
+                        </list>
+                    </field>
+
+                </group>
+
+                <footer>
+                    <button name="action_add_gases"
+                            type="object"
+                            string="Agregar gases"
+                            class="btn-primary"/>
+                    <button string="Cancelar"
+                            special="cancel"
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

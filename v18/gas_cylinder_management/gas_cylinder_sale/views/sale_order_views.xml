@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_order_form_gas_sale" model="ir.ui.view">
+        <field name="name">sale.order.form.gas.sale</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='order_line']//list//field[@name='product_template_id']" position="after">
+                <field name="gas_sale_cylinder_id" optional="show" readonly="1" column_invisible="True"/>
+                <field name="gas_sale_mode" optional="hide" readonly="1"/>
+                <field name="gas_sale_source_line_id" optional="hide" readonly="1"/>
+                <field name="gas_can_select" column_invisible="True"/>
+                <button name="action_select_gas"
+                        type="object"
+                        string="Seleccionar gases"
+                        icon="fa-flask"
+                        invisible="not gas_can_select"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

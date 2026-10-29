@@ -7,6 +7,7 @@ class GasCylinder(models.Model):
     _description = 'Cilindro físico de gas'
     _order = 'id desc'
     _rec_name = 'serial_number'
+    _inherit = ['mail.thread']
 
     active = fields.Boolean(string='Activo', default=True, )
 
